@@ -12,9 +12,9 @@ int ROW_ACCESS_DELAY, COL_ACCESS_DELAY;
 struct Instruction
 {
     string name;
-    string field_1;
-    string field_2;
-    string field_3;
+    string field_1 ="";
+    string field_2 ="";
+    string field_3 ="";
 };
 struct DRAM_ins
 {
@@ -25,6 +25,8 @@ struct DRAM_ins
     string reg;         //stores the register of instruction
 };
 
+int load_store;
+string curr_register;
 DRAM_ins currentInstruction;
 vector<string> words;              //stores the entire file as a vector of strings
 map<int, string> register_numbers; //maps each number in 0-31 to a register
@@ -72,6 +74,13 @@ int findType(int row_number)
         }
     }
 }
+
+bool valid_register(string R)
+{
+    return register_values.find(R) != register_values.end();
+}
+
+
 void map_operations()
 {
     operation["add"] = 1;
@@ -102,7 +111,7 @@ void reset_instruction()
     curr_ins_num = -1;
     ins_register[currentInstruction.reg] = -1;
     type_ins = -1;
-    row_buffer = -1;
+    //row_buffer = -1;
     starting_cycle_num = -1;
     //currentInstruction = NULL;
     writeback_row_num = -1;
@@ -121,6 +130,20 @@ bool is_integer(string s)
     return true;
 }
 
+void writeBack(){
+    for (int i = row_buffer * 1024; i < row_buffer * 1024 + 1024; i++)
+    {
+        memory[i] = ROW_BUFFER[i - row_buffer * 1024] ;
+    }
+}
+
+void activateRow(int num_row){
+    for (int i = num_row * 1024; i < num_row * 1024 + 1024; i++)
+    {
+        ROW_BUFFER[i - num_row * 1024] = memory[i];
+    } 
+}
+
 void perform_row(string reg)
 {
     //in this function:
@@ -133,12 +156,20 @@ void perform_row(string reg)
     //and, pushing the required strings for printing.
     //will have to complete a partial instruction
     //first execute the current instruction
-    if (current_ins_num != -1)
+    if (curr_ins_num != -1)
     {
-        int ending_cycle = starting_cycle + (type)*ROW_ACCESS_DELAY + COL_ACCESS_DELAY;
+        if(currentInstruction.type==0){
+            register_values[currentInstruction.reg]=ROW_BUFFER[col_access_num];
+            ins_register[currentInstruction.reg]=-1;
+        }
+        else{
+            ROW_BUFFER[col_access_num]=currentInstruction.value;
+        }
+        int ending_cycle = starting_cycle_num + (type)*ROW_ACCESS_DELAY + COL_ACCESS_DELAY;
         clock_cycles = ending_cycle;
         reset_instruction();
     }
+
     int num_row = ins_register[reg];
     bool found_in_queue = false;
     int mem_value = -1;
@@ -150,15 +181,10 @@ void perform_row(string reg)
             mem_value = u.memory_address;
         }
     }
+
     if (found_in_queue)
     {
-        if (num_row != row_buffer)
-        {
-            for (int i = num_row * 1024; i < num_row * 1024 + 1024; i++)
-            {
-                ROW_BUFFER[i - num_row * 1024] = memory[i];
-            }
-        }
+        
         bool found_reg_ins = false;
         vector<DRAM_ins> temp; //stores the new queue
         for (auto u : DRAM_queues[num_row])
@@ -167,24 +193,47 @@ void perform_row(string reg)
             {
                 temp.push_back(u);
             }
+
             else
             {
                 if (!found_reg_ins)
                 {
                     // generate string for printing function
-                    int temp_row = u.memory_address / 1024;
-                    int temp_type = findType(temp_row);
-                    if (temp_type == 2)
+                    currentInstruction=u;
+                    curr_ins_num=u.ins_number;
+                    starting_cycle_num = clock_cycles;
+                    
+                    int temp_type = findType(num_row);
+                    type_ins= temp_type;
+                    if (temp_type==1){
+                        activateRow(num_row);
+                    }
+                    else if (temp_type == 2)
                     {
                         writeback_row_num = row_buffer;
-                    }
-                    row_buffer = temp_row;
+                        writeBack();
+                        activateRow(num_row);    
+                    }                    
+                    row_buffer = num_row;
                     col_access_num = u.memory_address - 1024 * row_buffer;
-                    totl_queue_size--;
+                    if(u.type==0){
+                        register_values[u.reg]=ROW_BUFFER[col_access_num];
+                        ins_register[u.reg]=-1;
+                        //now print/store output string
+                    }
+                    else{
+                        ROW_BUFFER[col_access_num]=u.value;
+                        //now print/store output string
+                    }
+
+                    int ending_cycle = starting_cycle_num + (type)*ROW_ACCESS_DELAY + COL_ACCESS_DELAY;
+                    clock_cycles = ending_cycle;
+                    total_queue_size--;
                     if (u.reg == reg)
                     {
                         found_reg_ins = true;
                     }
+                    reset_instruction();
                 }
                 else
                 {
@@ -199,43 +248,7 @@ void perform_row(string reg)
     }
 }
 
-void add()
-{
-    struct Instruction current = instructs[PC];
-    if (ins_register[current.field_1] != -1 && ins_register[current.field_1] == row_buffer)
-    {
-        perform_row(current.field_1);
-    }
-    if (ins_register[current.field_2] != -1 && ins_register[current.field_2] == row_buffer)
-    {
-        perform_row(current.field_2);
-    }
-    if (not(is_integer(current.field_3)) && ins_register[current.field_3] != -1 && ins_register[current.field_3] == row_buffer)
-    {
-        perform_row(current.field_3);
-    }
-    vector<pair<int, string>> row_order;
-    if (ins_register[current.field_1] != -1)
-        row_order.push_back({ins_register[current.field_1], current.field_1});
-    if (ins_register[current.field_2] != -1)
-        row_order.push_back({ins_register[current.field_2], current.field_2});
-    if (not(is_integer(current.field_3)) && ins_register[current.field_3] != -1)
-        row_order.push_back({ins_register[current.field_3], current.field_3});
-    int i = 0;
-    while (i < row_order.size())
-    {
-        perform_row(row_order[i].second);
-        i++;
-    }
-
-    if (is_integer(current.field_3))
-    {
-        register_values[current.field_1] = register_values[current.field_2] + stoi(current.field_3);
-    }
-    else
-    {
-        register_values[current.field_1] = register_values[current.field_2] + register_values[current.field_3];
-    }
+void parallelAction(){
     if (curr_ins_num != -1)
     {
         if (starting_cycle_num + (type_ins)*ROW_ACCESS_DELAY + COL_ACCESS_DELAY == clock_cycles)
@@ -258,30 +271,28 @@ void add()
             reset_instruction();
         }
     }
-    PC++;
 }
 
-void sub()
-{
+void freeRegister(){
     struct Instruction current = instructs[PC];
-    if (ins_register[current.field_1] != -1 && ins_register[current.field_1] == row_buffer)
+    if (valid_register(current.field_1) && ins_register[current.field_1] != -1 && ins_register[current.field_1] == row_buffer)
     {
         perform_row(current.field_1);
     }
-    if (ins_register[current.field_2] != -1 && ins_register[current.field_2] == row_buffer)
+    if (valid_register(current.field_2) && ins_register[current.field_2] != -1 && ins_register[current.field_2] == row_buffer)
     {
         perform_row(current.field_2);
     }
-    if (not(is_integer(current.field_3)) && ins_register[current.field_3] != -1 && ins_register[current.field_3] == row_buffer)
+    if (valid_register(current.field_3) && ins_register[current.field_3] != -1 && ins_register[current.field_3] == row_buffer)
     {
         perform_row(current.field_3);
     }
     vector<pair<int, string>> row_order;
-    if (ins_register[current.field_1] != -1)
+    if (valid_register(current.field_1) && ins_register[current.field_1] != -1)
         row_order.push_back({ins_register[current.field_1], current.field_1});
-    if (ins_register[current.field_2] != -1)
+    if (valid_register(current.field_2) && ins_register[current.field_2] != -1)
         row_order.push_back({ins_register[current.field_2], current.field_2});
-    if (not(is_integer(current.field_3)) && ins_register[current.field_3] != -1)
+    if (valid_register(current.field_3) && ins_register[current.field_3] != -1)
         row_order.push_back({ins_register[current.field_3], current.field_3});
     int i = 0;
     while (i < row_order.size())
@@ -289,6 +300,29 @@ void sub()
         perform_row(row_order[i].second);
         i++;
     }
+}
+
+void add()
+{
+    struct Instruction current = instructs[PC];
+    freeRegister();
+
+    if (is_integer(current.field_3))
+    {
+        register_values[current.field_1] = register_values[current.field_2] + stoi(current.field_3);
+    }
+    else
+    {
+        register_values[current.field_1] = register_values[current.field_2] + register_values[current.field_3];
+    }
+    parallelAction();
+    PC++;
+}
+
+void sub()
+{
+    struct Instruction current = instructs[PC];
+    freeRegister();
 
     if (is_integer(current.field_3))
     {
@@ -298,38 +332,15 @@ void sub()
     {
         register_values[current.field_1] = register_values[current.field_2] - register_values[current.field_3];
     }
+
+    parallelAction();
     PC++;
 }
 
 void mul()
 {
     struct Instruction current = instructs[PC];
-    if (ins_register[current.field_1] != -1 && ins_register[current.field_1] == row_buffer)
-    {
-        perform_row(current.field_1);
-    }
-    if (ins_register[current.field_2] != -1 && ins_register[current.field_2] == row_buffer)
-    {
-        perform_row(current.field_2);
-    }
-    if (not(is_integer(current.field_3)) && ins_register[current.field_3] != -1 && ins_register[current.field_3] == row_buffer)
-    {
-        perform_row(current.field_3);
-    }
-    vector<pair<int, string>> row_order;
-    if (ins_register[current.field_1] != -1)
-        row_order.push_back({ins_register[current.field_1], current.field_1});
-    if (ins_register[current.field_2] != -1)
-        row_order.push_back({ins_register[current.field_2], current.field_2});
-    if (not(is_integer(current.field_3)) && ins_register[current.field_3] != -1)
-        row_order.push_back({ins_register[current.field_3], current.field_3});
-    int i = 0;
-    while (i < row_order.size())
-    {
-        perform_row(row_order[i].second);
-        i++;
-    }
-
+    freeRegister();
     if (is_integer(current.field_3))
     {
         register_values[current.field_1] = register_values[current.field_2] * stoi(current.field_3);
@@ -338,63 +349,26 @@ void mul()
     {
         register_values[current.field_1] = register_values[current.field_2] * register_values[current.field_3];
     }
+
+    parallelAction();
     PC++;
 }
 
 void addi()
 {
     struct Instruction current = instructs[PC];
-    if (ins_register[current.field_1] != -1 && ins_register[current.field_1] == row_buffer)
-    {
-        perform_row(current.field_1);
-    }
-    if (ins_register[current.field_2] != -1 && ins_register[current.field_2] == row_buffer)
-    {
-        perform_row(current.field_2);
-    }
-
-    vector<pair<int, string>> row_order;
-    if (ins_register[current.field_1] != -1)
-        row_order.push_back({ins_register[current.field_1], current.field_1});
-    if (ins_register[current.field_2] != -1)
-        row_order.push_back({ins_register[current.field_2], current.field_2});
-
-    int i = 0;
-    while (i < row_order.size())
-    {
-        perform_row(row_order[i].second);
-        i++;
-    }
+    freeRegister();
 
     register_values[current.field_1] = register_values[current.field_2] + stoi(current.field_3);
 
+    parallelAction();
     PC++;
 }
 
 void beq()
 {
     struct Instruction current = instructs[PC];
-    if (ins_register[current.field_1] != -1 && ins_register[current.field_1] == row_buffer)
-    {
-        perform_row(current.field_1);
-    }
-    if (ins_register[current.field_2] != -1 && ins_register[current.field_2] == row_buffer)
-    {
-        perform_row(current.field_2);
-    }
-
-    vector<pair<int, string>> row_order;
-    if (ins_register[current.field_1] != -1)
-        row_order.push_back({ins_register[current.field_1], current.field_1});
-    if (ins_register[current.field_2] != -1)
-        row_order.push_back({ins_register[current.field_2], current.field_2});
-
-    int i = 0;
-    while (i < row_order.size())
-    {
-        perform_row(row_order[i].second);
-        i++;
-    }
+    freeRegister();
 
     if (register_values[current.field_1] == register_values[current.field_2])
     {
@@ -402,69 +376,28 @@ void beq()
     }
     else
         PC++;
+
+    parallelAction();
 }
 
 void bne()
 {
     struct Instruction current = instructs[PC];
-    if (ins_register[current.field_1] != -1 && ins_register[current.field_1] == row_buffer)
-    {
-        perform_row(current.field_1);
-    }
-    if (ins_register[current.field_2] != -1 && ins_register[current.field_2] == row_buffer)
-    {
-        perform_row(current.field_2);
-    }
-
-    vector<pair<int, string>> row_order;
-    if (ins_register[current.field_1] != -1)
-        row_order.push_back({ins_register[current.field_1], current.field_1});
-    if (ins_register[current.field_2] != -1)
-        row_order.push_back({ins_register[current.field_2], current.field_2});
-
-    int i = 0;
-    while (i < row_order.size())
-    {
-        perform_row(row_order[i].second);
-        i++;
-    }
-
+    freeRegister();
     if (register_values[current.field_1] != register_values[current.field_2])
     {
         PC = stoi(current.field_3) - 1;
     }
     else
         PC++;
+
+    parallelAction();
 }
 
 void slt()
 {
     struct Instruction current = instructs[PC];
-    if (ins_register[current.field_1] != -1 && ins_register[current.field_1] == row_buffer)
-    {
-        perform_row(current.field_1);
-    }
-    if (ins_register[current.field_2] != -1 && ins_register[current.field_2] == row_buffer)
-    {
-        perform_row(current.field_2);
-    }
-    if (not(is_integer(current.field_3)) && ins_register[current.field_3] != -1 && ins_register[current.field_3] == row_buffer)
-    {
-        perform_row(current.field_3);
-    }
-    vector<pair<int, string>> row_order;
-    if (ins_register[current.field_1] != -1)
-        row_order.push_back({ins_register[current.field_1], current.field_1});
-    if (ins_register[current.field_2] != -1)
-        row_order.push_back({ins_register[current.field_2], current.field_2});
-    if (not(is_integer(current.field_3)) && ins_register[current.field_3] != -1)
-        row_order.push_back({ins_register[current.field_3], current.field_3});
-    int i = 0;
-    while (i < row_order.size())
-    {
-        perform_row(row_order[i].second);
-        i++;
-    }
+    freeRegister();
 
     if (is_integer(current.field_3))
     {
@@ -481,37 +414,21 @@ void slt()
             register_values[current.field_1] = 0;
     }
     PC++;
+    parallelAction();
 }
 
 void j()
 {
     struct Instruction current = instructs[PC];
     PC = stoi(current.field_1) - 1;
+    parallelAction();
 }
 
 void lw()
 {
 
     struct Instruction current = instructs[PC];
-    if (ins_register[current.field_1] != -1 && ins_register[current.field_1] == row_buffer)
-    {
-        perform_row(current.field_1);
-    }
-    if (ins_register[current.field_3] != -1 && ins_register[current.field_3] == row_buffer)
-    {
-        perform_row(current.field_3);
-    }
-    vector<pair<int, string>> row_order;
-    if (ins_register[current.field_1] != -1)
-        row_order.push_back({ins_register[current.field_1], current.field_1});
-    if (ins_register[current.field_3] != -1)
-        row_order.push_back({ins_register[current.field_3], current.field_3});
-    int i = 0;
-    while (i < row_order.size())
-    {
-        perform_row(row_order[i].second);
-        i++;
-    }
+    freeRegister();
 
     int address = register_values[current.field_3] + stoi(current.field_2);
     DRAM_ins temp;
@@ -530,16 +447,15 @@ void lw()
         if (type_ins == 2)
         {
             writeback_row_num = row_buffer;
+            writeBack();
         }
         row_buffer = address / 1024;
         col_access_num = address - 1024 * row_buffer;
-        for (int i = row_buffer * 1024; i < row_buffer * 1024 + 1024; i++)
-        {
-            ROW_BUFFER[i - row_buffer * 1024] = memory[i];
-        }
+        if(type_ins!=0)activateRow(row_buffer);
     }
     else
-    {
+    {   
+        ins_register[current.field_1] = address / 1024;
         DRAM_queues[address / 1024].push(temp);
         total_queue_size++;
     }
@@ -548,25 +464,7 @@ void lw()
 void sw()
 {
     struct Instruction current = instructs[PC];
-    if (ins_register[current.field_1] != -1 && ins_register[current.field_1] == row_buffer)
-    {
-        perform_row(current.field_1);
-    }
-    if (ins_register[current.field_3] != -1 && ins_register[current.field_3] == row_buffer)
-    {
-        perform_row(current.field_3);
-    }
-    vector<pair<int, string>> row_order;
-    if (ins_register[current.field_1] != -1)
-        row_order.push_back({ins_register[current.field_1], current.field_1});
-    if (ins_register[current.field_3] != -1)
-        row_order.push_back({ins_register[current.field_3], current.field_3});
-    int i = 0;
-    while (i < row_order.size())
-    {
-        perform_row(row_order[i].second);
-        i++;
-    }
+    freeRegister();
 
     int address = register_values[current.field_3] + stoi(current.field_2);
     DRAM_ins temp;
@@ -574,6 +472,7 @@ void sw()
     temp.type = 1;
     temp.memory_address = address;
     temp.reg = current.field_1;
+    temp.value=register_values[current.field_1];
     if (curr_ins_num == -1)
     {
         currentInstruction = temp;
@@ -584,16 +483,15 @@ void sw()
         if (type_ins == 2)
         {
             writeback_row_num = row_buffer;
+            writeBack();
         }
         row_buffer = address / 1024;
         col_access_num = address - 1024 * row_buffer;
-        for (int i = row_buffer * 1024; i < row_buffer * 1024 + 1024; i++)
-        {
-            ROW_BUFFER[i - row_buffer * 1024] = memory[i];
-        }
+        if(type_ins!=0)activateRow(row_buffer);
     }
     else
-    {
+    {   
+        
         DRAM_queues[address / 1024].push(temp);
         total_queue_size++;
     }
@@ -638,10 +536,7 @@ void initialise_Registers()
     register_values["$sp"] = 2147479548;
 }
 
-bool valid_register(string R)
-{
-    return register_values.find(R) != register_values.end();
-}
+
 int SearchForRegister(int starting_index, int ending_index, string file_string)
 {
     //this is a helper function which searches for a register from starting index and returns the starting point of it
@@ -757,6 +652,142 @@ string Match_Instruction(int start, int end, string file_string)
         }
     }
     return ""; //when no valid instruction found
+}
+
+void Assign_new_row()
+{
+
+    if(curr_ins_num==-1 && DRAM_queues[row_buffer].size()!=0){
+        DRAM_ins temp = DRAM_queues[row_buffer].front();
+        currentInstruction=temp;
+        DRAM_queues[row_buffer].pop();
+        curr_ins_num = temp.ins_number;
+        type_ins = findType(row_buffer); //type only depends on value in row buffer and current instruction row number
+        col_access_num = temp.memory_address - 1024 * i;
+        //assigning col_access_number
+        //assign starting_cycle_num at callee loaction
+        curr_register = temp.reg;
+        load_store = temp.type; //0 for load , 1 for save instruction
+        if(temp.type==0){
+            ins_register[curr_register]=temp.memory_address/1024;
+        }
+        total_queue_size--;     //as an element is popped
+        return;
+    }
+    for (int i = 0; i < 1024; i++)
+    {
+        if (DRAM_queues[i].size() > 0)
+        {
+            //assign various current instruction parameters, pop from the queue current instruction
+
+            DRAM_ins temp = DRAM_queues[i].front();
+            currentInstruction=temp;
+            DRAM_queues[i].pop();
+            curr_ins_num = temp.ins_number;
+            type_ins = findType(i); //type only depends on value in row buffer and current instruction row number
+            if (type_ins == 2)
+            {
+                writeback_row_num = row_buffer;
+                writeBack();
+                activateRow(i);
+            }
+            col_access_num = temp.memory_address - 1024 * i;
+            //assigning col_access_number
+            row_buffer = i;
+            //assign starting_cycle_num at callee loaction
+            curr_register = temp.reg;
+            load_store = temp.type; //0 for load , 1 for save instruction
+            if(temp.type==0){
+                ins_register[curr_register]=temp.memory_address/1024;
+            }
+            total_queue_size--;     //as an element is popped
+            break;
+        }
+    }
+}
+                 
+
+void process()
+{
+    int execution_no = 1;
+    int op_count[11] = {0};
+    int ins_count[instructs.size()];
+    for (int j = 0; j < instructs.size(); j++)
+    {
+        ins_count[j] = 0;
+    }
+
+    
+
+    while (PC < instructs.size())
+    {
+        //completed_just = false;
+        ins_count[PC]++;
+        struct Instruction current = instructs[PC];
+        int action = operation[current.name];
+        op_count[action]++;
+        clock_cycles++;
+        //check if no DRAM instruction is being executed. Then, check if queue is empty.
+        if (curr_ins_num == -1)
+        {
+            if (total_queue_size == 0)
+            {
+                //do nothing
+            }
+            else
+            {
+                // assign a non empty row
+                Assign_new_row();
+                starting_cycle_num = clock_cycles;
+                // now we need to initiate a DRAM request for that, for printing purposes
+            }
+        }
+        //check if some parallel instruction is completed in the current cycle.
+        //de - assign all values.
+        switch (action)
+        {
+        case 1:
+            add();
+            // inside add, sub, mul. check that if the registers have some lw/sw instruction
+            //present inside the queue
+            // add r1,r2,r3. For r1, check if present in current instruction
+            //or some lw/sw instruction in queue. If current, just complete the current ins.
+            //else, complete instructions with same memory as defined in overleaf.
+            //for r2,r3, just check if they occur in some lw instruction, else execute normally
+            break;
+        case 2:
+            sub();
+            break;
+        case 3:
+            mul();
+            break;
+        case 4:
+            beq();
+            break;
+        case 5:
+            bne();
+            break;
+        case 6:
+            slt();
+            break;
+        case 7:
+            j();
+            break;
+        case 8:
+            lw();
+            break;
+        case 9:
+            sw();
+            break;
+        case 10:
+            addi();
+            break;
+        }
+        if (!validFile)
+        {
+            return;
+        }
+    }
 }
 
 //handle the case when integer is beyond instruction memory at execution time
@@ -989,188 +1020,9 @@ void Number_of_times(int ins_count[], int op_count[])
     cout << "\nThe total number of clock cycles elapsed is : " << std::dec << clock_cycles << "\n\n";
 }
 
-void perform_operations(bool flag)
-{
-    // flag= true means we intend to print the register values, else we are simply counting the number of clock cycles
-    int execution_no = 1;
-    int op_count[11] = {0};
-    int ins_count[instructs.size()];
-    for (int j = 0; j < instructs.size(); j++)
-    {
-        ins_count[j] = 0;
-    }
-    if (flag)
-    {
-        cout << "\n";
-    }
-    while (PC < instructs.size())
-    {
-        ins_count[PC]++;
-        struct Instruction current = instructs[PC];
-        int action = operation[current.name];
-        op_count[action]++;
-        clock_cycles++;
-        if (clock_cycles > maxClockCycles)
-        {
-            infinite_loop = true;
-            return;
-        }
-        switch (action)
-        {
-        case 1:
-            add();
-            break;
-        case 2:
-            sub();
-            break;
-        case 3:
-            mul();
-            break;
-        case 4:
-            beq();
-            break;
-        case 5:
-            bne();
-            break;
-        case 6:
-            slt();
-            break;
-        case 7:
-            j();
-            break;
-        case 8:
-            lw();
-            break;
-        case 9:
-            sw();
-            break;
-        case 10:
-            addi();
-            break;
-        }
-        if (!validFile)
-        {
-            return;
-        }
-        if (flag)
-        {
-            cout << "Execution no. " << std::dec << execution_no++ << "\n\n";
-            print_registers();
-            cout << "\n";
-        }
-    }
-    if (flag)
-    {
-        Number_of_times(ins_count, op_count);
-    }
-}
 
-void Assign_new_row()
-{
-    for (int i = 0; i < 1024; i++)
-    {
-        if (DRAM_queues[i].size() > 0)
-        {
-            //assign various current instruction parameters, pop from the queue current instruction
-            DRAM_ins temp = DRAM_queues[i].front();
-            DRAM_queues[i].pop();
-            curr_ins_num = temp.ins_number;
-            type_ins = findType(i); //type only depends on value in row buffer and current instruction row number
-            if (type_ins == 2)
-            {
-                writeback_row_num = row_buffer;
-            }
-            col_access_num = temp.memory_address - 1024 * i;
-            //assigning col_access_number
-            row_buffer = i;
-            //assign starting_cycle_num at callee loaction
-            curr_register = temp.reg;
-            load_store = temp.type; //0 for load , 1 for save instruction
-            total_queue_size--;     //as an element is popped
-            break;
-        }
-    }
-}
-void process()
-{
-    int execution_no = 1;
-    int op_count[11] = {0};
-    int ins_count[instructs.size()];
-    for (int j = 0; j < instructs.size(); j++)
-    {
-        ins_count[j] = 0;
-    }
 
-    while (PC < instructs.size())
-    {
-        //completed_just = false;
-        ins_count[PC]++;
-        struct Instruction current = instructs[PC];
-        int action = operation[current.name];
-        op_count[action]++;
-        clock_cycles++;
-        //check if no DRAM instruction is being executed. Then, check if queue is empty.
-        if (curr_ins_num == -1)
-        {
-            if (total_queue_size == 0)
-            {
-                //do nothing
-            }
-            else
-            {
-                // assign a non empty row
-                Assign_new_row();
-                starting_cycle_num = clock_cycles;
-                // now we need to initiate a DRAM request for that, for printing purposes
-            }
-        }
-        //check if some parallel instruction is completed in the current cycle.
-        //de - assign all values.
-        switch (action)
-        {
-        case 1:
-            add();
-            // inside add, sub, mul. check that if the registers have some lw/sw instruction
-            //present inside the queue
-            // add r1,r2,r3. For r1, check if present in current instruction
-            //or some lw/sw instruction in queue. If current, just complete the current ins.
-            //else, complete instructions with same memory as defined in overleaf.
-            //for r2,r3, just check if they occur in some lw instruction, else execute normally
-            break;
-        case 2:
-            sub();
-            break;
-        case 3:
-            mul();
-            break;
-        case 4:
-            beq();
-            break;
-        case 5:
-            bne();
-            break;
-        case 6:
-            slt();
-            break;
-        case 7:
-            j();
-            break;
-        case 8:
-            lw();
-            break;
-        case 9:
-            sw();
-            break;
-        case 10:
-            addi();
-            break;
-        }
-        if (!validFile)
-        {
-            return;
-        }
-    }
-}
+
 
 int main(int argc, char *argv[])
 {
@@ -1204,13 +1056,13 @@ int main(int argc, char *argv[])
         cout << "Invalid MIPS program" << endl;
         return -1;
     }
-    perform_operations(false);
+    // perform_operations(false);
 
-    if (infinite_loop)
-    {
-        cout << "Time limit exceeded !" << endl;
-        return -1;
-    }
+    // if (infinite_loop)
+    // {
+    //     cout << "Time limit exceeded !" << endl;
+    //     return -1;
+    // }
     if (!validFile)
     {
         cout << "Invalid MIPS program" << endl; //due to wrong lw and sw addresses
@@ -1219,7 +1071,7 @@ int main(int argc, char *argv[])
     PC = 0;
     clock_cycles = 0;
     initialise_Registers();
-    perform_operations(true);
+    process();
 
     /*each instruction occupies 4 bytes. So, we will first of all maintain an array of instructions
      to get the instruction starting at memory address i (in the form of a struct). Rest of the memory is used in RAM*/
