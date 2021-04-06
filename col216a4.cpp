@@ -456,8 +456,13 @@ void perform_operations(bool flag){
 
 
 int main(){
-    
-      ifstream file("mips_program.txt");
+     if (argc<4){cout<<"Invalid arguments\n";return -1;}
+    //Taking file name, row and column access delays from the command line
+      string file_name = argv[1];
+      ROW_ACCESS_DELAY = stoi(argv[2]);
+      COL_ACCESS_DELAY = stoi(argv[3]);
+    if (ROW_ACCESS_DELAY < 1 || COL_ACCESS_DELAY < 1){cout<<"Invalid arguments\n";return -1;}
+      ifstream file(file_name);
       string current_line;
       map_register_numbers();
       initialise_Registers();
