@@ -293,6 +293,8 @@ void complete_remaining(){
             total_queue_size--;
             reset_instruction();
         }
+        DRAM_queues[row_buffer]={};
+    }
         for (int i=0;i<1024;i++){
             //execute the remaaining instructions in the queue
             if (DRAM_queues[i].size()>0){
@@ -329,7 +331,6 @@ void complete_remaining(){
                 DRAM_queues[i]={};
             }
         }
-    }
 }
 void Assign_new_row()
 {
