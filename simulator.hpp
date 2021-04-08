@@ -90,7 +90,11 @@ void beq_sim(vector<Instruction> instructs)
     struct Instruction current = instructs[PC];
     if (register_values_sim[current.field_1] == register_values_sim[current.field_2])
     {
-        PC = stoi(current.field_3) - 1;
+        if(labels.find(current.field_3) == labels.end()){
+            validFile = false;
+            return;
+        }
+        PC = labels[current.field_3] - 1;
     }
     else
         PC++;
@@ -100,7 +104,11 @@ void bne_sim(vector<Instruction> instructs)
     struct Instruction current = instructs[PC];
     if (register_values_sim[current.field_1] != register_values_sim[current.field_2])
     {
-        PC = stoi(current.field_3) - 1;
+        if(labels.find(current.field_3) == labels.end()){
+            validFile = false;
+            return;
+        }
+        PC = labels[current.field_3] - 1;
     }
     else
         PC++;
@@ -131,7 +139,11 @@ void slt_sim(vector<Instruction> instructs)
 void j_sim(vector<Instruction> instructs)
 {
     struct Instruction current = instructs[PC];
-    PC = stoi(current.field_1) - 1;
+    if(labels.find(current.field_1) == labels.end()){
+        validFile = false;
+        return;
+    }
+    PC = labels[current.field_1] - 1;
 }
 void lw_sim(vector<Instruction> instructs)
 {

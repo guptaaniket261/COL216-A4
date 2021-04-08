@@ -8,6 +8,9 @@
 #include "simulator.hpp"
 using namespace std;
 
+
+
+map<string,int> labelNo;
 bool f = false;
 int ROW_ACCESS_DELAY, COL_ACCESS_DELAY;
 int row_buffer_updates = 0;
@@ -889,7 +892,7 @@ void beq()
     toPrint temp = print_normal_operation();
     if (register_values[current.field_1] == register_values[current.field_2])
     {
-        PC = stoi(current.field_3) - 1;
+        PC = labelNo[current.field_3] - 1;
     }
     else
         PC++;
@@ -905,7 +908,7 @@ void bne()
     toPrint temp = print_normal_operation();
     if (register_values[current.field_1] != register_values[current.field_2])
     {
-        PC = stoi(current.field_3) - 1;
+        PC = labelNo[current.field_3] - 1;
     }
     else
         PC++;
@@ -946,7 +949,7 @@ void slt()
 void j()
 {
     struct Instruction current = instructs[PC];
-    PC = stoi(current.field_1) - 1;
+    PC = labelNo[current.field_1] - 1;
     clock_cycles++;
     toPrint temp = print_normal_operation();
     temp.instruction = findInstruction(current);
@@ -1135,6 +1138,7 @@ void process()
         writeBack();
     }
 }
+
 void PrintData()
 {
     cout << "\nTotal number of cycles: " << clock_cycles << endl;
@@ -1213,17 +1217,28 @@ int main(int argc, char *argv[])
     validFile = true;
     while (getline(file, current_line))
     {
-        pair<bool, Instruction> temp = Create_structs(current_line, register_values);
-        if (temp.first != false)
+        if(current_line=="")continue;
+        pair<int, Instruction> temp = Create_structs(current_line, register_values,instructs.size());
+        if (temp.first == 1)
         {
             instructs.push_back(temp.second);
+            //cout<<temp.second.name<<" "<<instructs.size()<<endl;
+        }
+        else if(temp.first == 2){
+            continue;
+        }
+        else{
+            //cout<<instructs.size()<<endl;
+            validFile=false;
         }
     }
     if (!validFile)
     {
+        //cout<<"ok";
         cout << "Invalid MIPS program" << endl;
         return -1;
     }
+    labelNo=getLabels();
     pair<bool, bool> sim = simulate(instructs, operation, register_numbers);
     if (sim.first)
     {
