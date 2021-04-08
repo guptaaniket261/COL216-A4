@@ -1,0 +1,367 @@
+All the test cases are run on both the parts so that the difference in both parts is clear:
+
+CLASS 1: Only lw instructions are present
+
+Case 1.1: Each lw is immediately followed by another lw (outputs must be same for both)
+
+ROW_ACCESS_DELAY = 4, COL_ACCESS_DELAY = 2
+
+addi $t0, $t0, 5
+addi $t1, $t1, 7
+mul $t1, $t1, $t0
+j 6
+lw $t1, 2004($s0)
+lw $t0, 2000($r0)
+lw $t2, 1996($s1)
+lw $t3, 60($r0)
+
+Case 1.2: An lw is only blocked by another lw instruction (in part 2)
+
+ROW_ACCESS_DELAY =5, COL_ACCESS_DELAY =3
+
+addi $t4,$t4, -20
+bne $t4, $r0, 4
+sub $t4, $t4, -5
+lw $t4, 4000($r0)
+sub $t2, $t2, 14
+mul $t2, $t2, 15
+lw $t2, 5000($r0)
+addi $s6, $s6, 20
+mul $s6, $s6, 3
+beq $s6, $r0, 9
+lw $s6, 5008($r0)
+
+Case 1.3: An lw is blocked only by a command containing the register involving lw (in part 2)
+
+ROW_ACCESS_DELAY = 8, COL_ACCESS_DELAY =4
+
+sub $t3, $t3, 20
+lw $t3, 6000($r0)
+addi $t4,$t4, 13
+bne $t4, $r0, 6
+addi $s6, $s6, 11
+mul $t4,$t4,$t4
+mul $t3,$t3,$t3
+lw $t4, 1800($r0)
+addi $t4, $t4, 16
+
+Case 1.4: No lw instruction is ever blocked (in part 2)
+
+ROW_ACCESS_DELAY = 1, COL_ACCESS_DELAY =1
+
+lw $t3, 2004($r0)
+addi $t4, $t4, 19
+j 5
+sub $t3, $t3, 10
+addi $t3, $t3, 18
+sub $t2, $t2, 14
+lw $t2, 5000($r0)
+mul $t3, $t3, $t3
+bne $t4, $t3, 11
+addi $t2, $t2, 20
+
+
+CLASS 2: Only sw instructions are present
+
+Case 2.1: Each sw is immediately followed by another sw (outputs must be same for both)
+
+ROW_ACCESS_DELAY = 10, COL_ACCESS_DELAY =5
+
+addi $t2, $t2, 6
+addi $t1, $t1, 12
+mul $t1, $t1, $t1
+j 5
+sw $t1, 4004($s0)
+sw $t0, 6000($r0)
+sw $t2, 2996($s1)
+sw $t3, 100($r0)
+
+
+Case 2.2: An sw is only blocked by another sw (in part 2)
+
+ROW_ACCESS_DELAY = 9, COL_ACCESS_DELAY =2
+
+sub $t3, $t3, 20
+sw $t3, 8000($r0)
+addi $t3,$t3, 19
+bne $t3, $r0, 6
+addi $s6, $s6, 11
+add $t3,$t3,$t3
+sw $s6, 800($r0)
+addi $s6, $s6, 6
+
+Case 2.3: No sw instruction is ever blocked (in part 2)
+
+ROW_ACCESS_DELAY =1, COL_ACCESS_DELAY =1
+
+addi $t4, $t4, 20
+sw $t4, 120($r0)
+addi $t4, $t4, 60
+addi $t2, $t2,12
+sw $t2, 1000($r0)
+sub $t2, $t2, $t4
+j 8
+sw $t2, 6000($r0)
+
+CLASS 3: Both lw and sw instructions are present
+
+Case 3.1: lw and sw instructions occur only consecutively
+
+ROW_ACCESS_DELAY =10, COL_ACCESS_DELAY = 8
+
+addi $t6, $t6, 10
+addi $t9, $t9, -30
+sw $t6, 1200($r0)
+lw $t7, 1200($r0)
+lw $t8, 1200($r0)
+sw $t9, 9000($r0)
+
+Case 3.2: No lw or sw instruction is ever blocked
+
+ROW_ACCESS_DELAY = 1, COL_ACCESS_DELAY =1
+
+beq $s0, $r0, 3
+j 1
+lw $s0, 3000($r0)
+addi $t3,$t3, 18
+bne $t3, $r0, 6
+sw $t3, 1600($r0)
+addi $t3, $t3, 30
+addi $t3, $t3, -20
+mul $t4, $t3,$t3
+lw $t4,60($r0)
+addi $t5,$t5,30
+
+Case 3.3: Some lw and sw instructions are blocked
+
+ROW_ACCESS_DELAY =2, COL_ACCESS_DELAY =1
+
+addi $t0,$t0, 40
+lw $t0, 1200($r0)
+addi $t1,$t1, 60
+j 7
+addi $s0, $s0, 10
+addi $t0,$t0, 10
+mul $t0,$t0, $t0
+sw $t0, 3000($r0)
+addi $t5, $t5, 10
+lw $t6, 3000($r0)
+sub $t0, $t0,$t5
+addi $s3, $s3, 30
+add $t0,$t0,$s3
+sw $s3, 1024($r0)
+sw $t0, 5600($r0)
+
+CLASS 4: Erroneous programs
+
+Case 4.1: Error while parsing (wrong syntax)
+
+ROW_ACCESS_DELAY =1, COL_ACCESS_DELAY =1
+
+addi $t0, $t0, 5
+lw $register1, 100($r0)
+
+Case 4.2: Addresses given to lw/sw not divisible by 4
+
+ROW_ACCESS_DELAY =1, COL_ACCESS_DELAY =1
+
+lw $t0, 13($r0)
+
+Case 4.3: Program enters an infinite loop
+
+ROW_ACCESS_DELAY =1, COL_ACCESS_DELAY =1
+
+addi $t0,$t0,1
+j 1
+
+Case 4.4: Addresses given to lw, sw overlap with instruction addresses
+
+ROW_ACCESS_DELAY =1, COL_ACCESS_DELAY =1
+
+addi $t0, $t0, 10
+sw $t0, 0($r0)
+
+Case 4.5: Invalid values of Row/column access delays
+
+ROW_ACCESS_DELAY = -1, COL_ACCESS_DELAY =1
+
+addi $t0, $t0, 1
+
+Case 4.6: $r0 register is tried to be changed
+
+ROW_ACCESS_DELAY = 1, COL_ACCESS_DELAY =1
+
+addi $r0, $r0, 1
+
+
+
+///////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////
+
+
+Case 1: Single instruction
+
+Testcase 1.1:
+
+add $t0, $t0, 5
+
+
+Testcase 1.2:
+
+sub $t0, $t0, -5
+
+Testcase 1.3:
+
+sw $t0, 2000($t0)
+
+
+Case 2: Multiple instructions in the file, each instruction is executed exactly one time
+
+Testcase 2.1:
+
+addi $s0, $s0, 4
+addi $t0, $t0, -4
+mul $t1, $t0, $s0
+slt $a0, $t1, -20
+addi $t9, $t9, 1
+j 7
+beq $a0, $t9, 8
+sw $t1, 400($a0)
+lw $t8, 400($a0)
+add $t6, $t8, $t0
+
+Testcase 2.2:
+
+add $t0, $t0, 23
+sub $t1, $t1, -2
+mul $t2, $t0, $t1
+bne $t2, $t0, 5
+mul $v0, $t2, -4
+addi $s0, $s0, 1
+j 8
+lw $v0, 100($s0)
+lw $t0, 60($s0)
+sw $t5, 60($s0)
+sw $t6 , 100($s0) 
+bne $t5, $t6, 14
+
+Case 3: Multiple instructions in the file, each used >=1 times
+
+Testcase 3.1:
+
+add $t0, $t0, 5
+addi $t1, $t1, 2
+mul $t2, $t0, 2
+add $t3, $t3, 12
+beq $t2, $t3, 8
+add $t2, $t2, 1
+j 5
+sub $t9, $t9, -10
+
+Testcase 3.2:
+
+add $t1, $t1, 10
+add $t2, $t2, 5
+sw $t1, 95($t2)
+lw $t3, 95($t2)
+sub $t3, $t3, -2
+sub $t3, $t3, 1
+slt $t4, $t3, $t2
+beq $t3, $t2, 10
+j 6
+
+
+Case 4: Syntactical Error
+
+Testcase 4.1 (Integer in place of register value):
+
+add $t5, $t5, 10
+mul $t9, $t5, $t5
+slt $t1, $t5, $t9
+add $t6, 8, 9
+
+Testcase 4.2 (comma missing):
+
+add $t0, $t0, 5
+slt $t1 $t0 $t2
+sub $t6, $t6, 100
+
+Testcase 4.3 (invalid instruction type):
+
+addi $t0, $t0, 9
+subtract $t3, $t0, 5
+
+Testcase 4.4 (Multiple instructions on the same line)
+
+sub $t0, $t0, -3 addi $t1, $t1, 30
+
+Testcase 4.5 (Invalid address, greater than allowed memory)
+
+sw $t0,1048576($t1)
+
+Testcase 4.6 (Invalid address, within the instruction memory size)
+
+lw $t0, 3($t1)
+
+
+Case 5: Infinite loop
+
+Testcase 5.1:
+
+add $t0, $t0, 1
+mul $t1, $t0, 2
+sub $t3, $t1, 2
+j 2
+add $t0, $t0, 5
+mul $t1, $t0, 7
+sub $t3, $t1, 11
+
+Testcase 5.2 (simple jump statement):
+
+j 1
+
+Case 6 : Multiple instructions, some not used due to branching
+
+Testcase 6.1:
+
+addi $v0, $v0, 19
+addi $t7, $t7, 12
+mul $s0, $v0, $t7
+sub $a0, $a0, -228
+beq $a0, $s0, 8
+lw $a0, 7($t0)
+sw $t7, 7($t0)
+add $t4, $t7,$v0
+bne $a0, $v0, 11
+mul $t5, $t4, $a0
+sub $a0, $a0, 228
+
+
+Testcase 6.2:
+
+addi $t0, $t0, 1
+addi $t1, $t1, 1
+sub $s0, $s0, -6
+mul $t1, $t1, $t0
+addi $t0, $t0, 1
+bne $t0, $s0, 4
+bne $t1, $t0, 9
+addi $v0, $v0, 12
+j 10
+
+Case 7: Negative labels in jump or branch statement
+
+Testcase 7.1:
+
+add $t1, $t1, 10
+add $t2, $t2, 5
+sw $t1, 11($t2)
+lw $t3, 11($t2)
+j -6
+
+Testcase 7.2:
+
+add $t0, $t0, 5
+sub $t1, $t1, -5
+beq $t0, $t1, -4
+

@@ -7,6 +7,7 @@
 #include <iomanip>
 #include "simulator.hpp"
 using namespace std;
+
 bool f = false;
 int ROW_ACCESS_DELAY, COL_ACCESS_DELAY;
 int row_buffer_updates = 0;
@@ -54,7 +55,7 @@ int starting_cycle_num = -1; //stores the starting cycle number for each instruc
 int writeback_row_num = -1;
 int col_access_num = -1;
 vector<deque<DRAM_ins>> DRAM_queues(1024);
-vector<int> ROW_BUFFER(1024);
+int ROW_BUFFER[1024] = {0};
 int total_queue_size;
 int op_count[11] = {0};
 int ins_count[1000000];
@@ -186,6 +187,14 @@ void map_operations()
 void initialise_Registers()
 {
     //initialises all the registers
+    for (int i = 0; i < (1 << 20); i++)
+    {
+        memory[i] = 0;
+    }
+    for (int i = 0; i < 1024; i++)
+    {
+        ROW_BUFFER[i] = 0;
+    }
     for (int i = 0; i < 32; i++)
     {
         register_values[register_numbers[i]] = 0;
@@ -194,15 +203,16 @@ void initialise_Registers()
 }
 void writeBack()
 {
-    for (int i = row_buffer * 1024; i < row_buffer * 1024 + 1024; i++)
+
+    for (int i = writeback_row_num * 1024; i < writeback_row_num * 1024 + 1024; i++)
     {
-        memory[i] = ROW_BUFFER[i - row_buffer * 1024];
+        memory[i] = ROW_BUFFER[i - writeback_row_num * 1024];
     }
 }
 
 void activateRow(int num_row)
 {
-    for (int i = num_row * 1024; i < num_row * 1024 + 1024; i++)
+    for (long i = num_row * 1024; i < num_row * 1024 + 1024; i++)
     {
         ROW_BUFFER[i - num_row * 1024] = memory[i];
     }
@@ -240,6 +250,10 @@ void optimizeSw(int numRow)
         }
         else
         {
+            if (mem_last != -1)
+            {
+                temp1.push_back(lastsw);
+            }
             temp1.push_back(u);
             mem_last = -1;
         }
@@ -273,11 +287,11 @@ void print(int endingCycle)
         curr.startingCycle = clock_cycles + 1;
         curr.endingCycle = starting_cycle_num + ROW_ACCESS_DELAY;
         curr.RegisterChanged = "N.A.";
-        curr.DRAMoperation = "Writeback row " + to_string(row_buffer);
+        curr.DRAMoperation = "Writeback row " + to_string(writeback_row_num);
         curr.DRAMchanges = "N.A.";
         curr.instruction = findInstruction(instructs[currentInstruction.ins_number]);
         prints.push_back(curr);
-        clock_cycles += ROW_ACCESS_DELAY;
+        clock_cycles = curr.endingCycle;
     }
     if (endingCycle - clock_cycles > COL_ACCESS_DELAY)
     {
@@ -292,7 +306,7 @@ void print(int endingCycle)
         curr.DRAMchanges = "N.A.";
         curr.instruction = findInstruction(instructs[currentInstruction.ins_number]);
         prints.push_back(curr);
-        clock_cycles += ROW_ACCESS_DELAY;
+        clock_cycles = curr.endingCycle;
     }
     curr.startingCycle = clock_cycles + 1;
     if (type_ins == 2)
@@ -340,10 +354,18 @@ void perform_row(string reg)
             row_buffer_updates += type_ins + 1;
         }
         int ending_cycle = starting_cycle_num + (type_ins)*ROW_ACCESS_DELAY + COL_ACCESS_DELAY;
+        f = true;
         print(ending_cycle);
+        f = false;
         clock_cycles = ending_cycle;
 
         reset_instruction();
+    }
+
+    if (ins_register[reg] == -1)
+    {
+
+        return;
     }
 
     int num_row = ins_register[reg];
@@ -494,14 +516,17 @@ void complete_remaining()
     }
     for (int num_row = 0; num_row < 1024; num_row++)
     {
-        optimizeSw(num_row);
+        if (DRAM_queues[num_row].size() > 0)
+        {
+            optimizeSw(num_row);
+        }
         for (auto u : DRAM_queues[num_row])
         {
             clock_cycles++;
             starting_cycle_num = clock_cycles;
             int temp_type = findType(num_row);
             type_ins = temp_type;
-            int ending_cycle = starting_cycle_num + (type_ins)*ROW_ACCESS_DELAY + COL_ACCESS_DELAY + 1;
+            int ending_cycle = starting_cycle_num + (type_ins)*ROW_ACCESS_DELAY + COL_ACCESS_DELAY;
             currentInstruction = u;
             curr_ins_num = u.ins_number;
             if (temp_type == 1)
@@ -515,11 +540,12 @@ void complete_remaining()
                 activateRow(num_row);
             }
 
-            col_access_num = u.memory_address - 1024 * row_buffer;
+            col_access_num = u.memory_address % 1024;
 
             if (u.type == 0)
             {
                 register_values[u.reg] = ROW_BUFFER[col_access_num];
+
                 ins_register[u.reg] = -1;
                 row_buffer_updates += type_ins;
                 //now print/store output string
@@ -527,6 +553,7 @@ void complete_remaining()
             else
             {
                 ROW_BUFFER[col_access_num] = u.value;
+
                 row_buffer_updates += type_ins + 1;
                 //now print/store output string
             }
@@ -621,7 +648,10 @@ void optimizeLw()
     struct Instruction current = instructs[PC];
     if (ins_register[current.field_1] != -1 && ins_register[current.field_1] == row_buffer)
     {
-        remove(current.field_1);
+        if (currentInstruction.reg != current.field_1)
+            remove(current.field_1);
+        else
+            perform_row(current.field_1);
     }
     if (ins_register[current.field_3] != -1 && ins_register[current.field_3] == row_buffer)
     {
@@ -630,7 +660,14 @@ void optimizeLw()
     }
 
     if (ins_register[current.field_1] != -1)
-        remove(current.field_1);
+    {
+        if (currentInstruction.reg != current.field_1)
+            remove(current.field_1);
+        else
+            perform_row(current.field_1);
+        cout << "fffff";
+    }
+
     if (ins_register[current.field_3] != -1)
         perform_row(current.field_3);
 }
@@ -660,7 +697,7 @@ void parallelAction(struct toPrint curr)
                 //update the row buffer with register value
                 curr.DRAMoperation = "Column access " + to_string(col_access_num);
                 curr.DRAMchanges = "memory address " + to_string(currentInstruction.memory_address) + "-" + to_string(currentInstruction.memory_address + 3) + "=" + to_string(currentInstruction.value);
-                ROW_BUFFER[col_access_num] = register_values[currentInstruction.reg];
+                ROW_BUFFER[col_access_num] = currentInstruction.value;
                 row_buffer_updates += type_ins + 1;
             }
             reset_instruction();
@@ -957,18 +994,20 @@ void lw()
             curr_ins_num = PC;
             starting_cycle_num = clock_cycles;
             type_ins = findType(address / 1024);
+            //cout << type_ins << endl;
             //copy contents from memory to row buffer
             if (type_ins == 2)
             {
                 writeback_row_num = row_buffer;
                 writeBack();
             }
-            row_buffer = address / 1024;
+
             col_access_num = address - 1024 * row_buffer;
             if (type_ins != 0)
-                activateRow(row_buffer);
+                activateRow(address / 1024);
         }
         prints.push_back(curr);
+        row_buffer = address / 1024;
     }
     else
     {
@@ -1026,7 +1065,7 @@ void sw()
             row_buffer = address / 1024;
             col_access_num = address - 1024 * row_buffer;
             if (type_ins != 0)
-                activateRow(row_buffer);
+                activateRow(address / 1024);
         }
     }
     else
@@ -1089,6 +1128,11 @@ void process()
     if (total_queue_size > 0 || curr_ins_num != -1)
     {
         complete_remaining(); //this function simply completes the remaining instructions starting from the current cycle
+    }
+    if (row_buffer != -1)
+    {
+        writeback_row_num = row_buffer;
+        writeBack();
     }
 }
 void PrintData()
