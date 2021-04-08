@@ -8,8 +8,6 @@
 #include "parser.hpp"
 using namespace std;
 bool f = false;
-long long int maxClockCycles = 10000;
-bool infinite_loop = false;
 int ROW_ACCESS_DELAY, COL_ACCESS_DELAY;
 int row_buffer_updates = 0;
 struct toPrint
@@ -38,10 +36,8 @@ DRAM_ins currentInstruction;
 vector<string> words;              //stores the entire file as a vector of strings
 map<int, string> register_numbers; //maps each number in 0-31 to a register
 map<string, int> register_values;  //stores the value of data stored in each register
-bool validFile = true;             //will be false if file is invalid at any point
 vector<Instruction> instructs;     //stores instructions as structs
 int memory[(1 << 20)] = {0};       //memory used to store the data
-int PC = 0;                        // PC pointer, points to the next instruction
 int clock_cycles = 0;
 map<string, int> operation;
 map<int, string> intTostr_operation;
@@ -63,7 +59,77 @@ int op_count[11] = {0};
 int ins_count[1000000];
 //bool completed_just =false;
 //stores that if an instruction was just completed in the current cycle
-//for printing, we will store the starting cycle, ending cycle,
+//for printing, we will store the starting cycle, ending cycle
+int findType(int row_number)
+{
+    if (row_buffer == -1)
+    {
+        //this is type 1, activation + COl_access
+        return 1;
+    }
+    else
+    {
+        if (row_number == row_buffer)
+        {
+            return 0;
+            //this is type 0, only col_access
+        }
+        else
+        {
+            return 2; //writeback also required
+        }
+    }
+}
+string findInstruction(Instruction current)
+{
+    int action = operation[current.name];
+    switch (action)
+    {
+    case 1:
+        return "add " + current.field_1 + ", " + current.field_2 + ", " + current.field_3;
+        break;
+    case 2:
+        return "sub " + current.field_1 + ", " + current.field_2 + ", " + current.field_3;
+        break;
+    case 3:
+        return "mul " + current.field_1 + ", " + current.field_2 + ", " + current.field_3;
+        break;
+    case 4:
+        return "beq " + current.field_1 + ", " + current.field_2 + ", " + current.field_3;
+        break;
+    case 5:
+        return "bne " + current.field_1 + ", " + current.field_2 + ", " + current.field_3;
+        break;
+    case 6:
+        return "slt " + current.field_1 + ", " + current.field_2 + ", " + current.field_3;
+        break;
+    case 7:
+        return "j " + current.field_1;
+        break;
+    case 8:
+        return "lw " + current.field_1 + ", " + current.field_2 + "(" + current.field_3 + ")";
+        break;
+    case 9:
+        return "sw " + current.field_1 + ", " + current.field_2 + "(" + current.field_3 + ")";
+        break;
+    case 10:
+        return "addi " + current.field_1 + ", " + current.field_2 + ", " + current.field_3;
+        break;
+    }
+    return "N.A";
+}
+void reset_instruction()
+{
+
+    curr_ins_num = -1;
+    ins_register[currentInstruction.reg] = -1;
+    type_ins = -1;
+    //row_buffer = -1;
+    starting_cycle_num = -1;
+    //currentInstruction = NULL;
+    writeback_row_num = -1;
+    col_access_num = -1;
+}
 void map_register_numbers()
 {
     //maps each register to a unique number between 0-31 inclusive
@@ -124,77 +190,6 @@ void initialise_Registers()
         register_values[register_numbers[i]] = 0;
         ins_register[register_numbers[i]] = -1;
     }
-}
-int findType(int row_number)
-{
-    if (row_buffer == -1)
-    {
-        //this is type 1, activation + COl_access
-        return 1;
-    }
-    else
-    {
-        if (row_number == row_buffer)
-        {
-            return 0;
-            //this is type 0, only col_access
-        }
-        else
-        {
-            return 2; //writeback also required
-        }
-    }
-}
-string findInstruction(Instruction current)
-{
-    int action = operation[current.name];
-    switch (action)
-    {
-    case 1:
-        return "add " + current.field_1 + ", " + current.field_2 + ", " + current.field_3;
-        break;
-    case 2:
-        return "sub " + current.field_1 + ", " + current.field_2 + ", " + current.field_3;
-        break;
-    case 3:
-        return "mul " + current.field_1 + ", " + current.field_2 + ", " + current.field_3;
-        break;
-    case 4:
-        return "beq " + current.field_1 + ", " + current.field_2 + ", " + current.field_3;
-        break;
-    case 5:
-        return "bne " + current.field_1 + ", " + current.field_2 + ", " + current.field_3;
-        break;
-    case 6:
-        return "slt " + current.field_1 + ", " + current.field_2 + ", " + current.field_3;
-        break;
-    case 7:
-        return "j " + current.field_1;
-        break;
-    case 8:
-        return "lw " + current.field_1 + ", " + current.field_2 + "(" + current.field_3 + ")";
-        break;
-    case 9:
-        return "sw " + current.field_1 + ", " + current.field_2 + "(" + current.field_3 + ")";
-        break;
-    case 10:
-        return "addi " + current.field_1 + ", " + current.field_2 + ", " + current.field_3;
-        break;
-    }
-
-    return "N.A";
-}
-void reset_instruction()
-{
-
-    curr_ins_num = -1;
-    ins_register[currentInstruction.reg] = -1;
-    type_ins = -1;
-    //row_buffer = -1;
-    starting_cycle_num = -1;
-    //currentInstruction = NULL;
-    writeback_row_num = -1;
-    col_access_num = -1;
 }
 void writeBack()
 {
@@ -756,35 +751,48 @@ void add()
     freeRegister();
     clock_cycles++;
     toPrint temp = print_normal_operation();
-    if (is_integer(current.field_3))
+    if (current.field_1 == "$r0")
+    {
+        temp.RegisterChanged = "$r0 = " + to_string(0);
+    }
+    else if (is_integer(current.field_3))
     {
         register_values[current.field_1] = register_values[current.field_2] + stoi(current.field_3);
+        temp.RegisterChanged = current.field_1 + " = " + to_string(register_values[current.field_1]);
     }
     else
     {
         register_values[current.field_1] = register_values[current.field_2] + register_values[current.field_3];
+        temp.RegisterChanged = current.field_1 + " = " + to_string(register_values[current.field_1]);
     }
-    temp.RegisterChanged = current.field_1 + " = " + to_string(register_values[current.field_1]);
+
     temp.instruction = findInstruction(current);
     parallelAction(temp);
 
     PC++;
 }
+
 void sub()
 {
     struct Instruction current = instructs[PC];
     freeRegister();
     clock_cycles++;
     toPrint temp = print_normal_operation();
-    if (is_integer(current.field_3))
+    if (current.field_1 == "$r0")
+    {
+        temp.RegisterChanged = "$r0 = " + to_string(0);
+    }
+    else if (is_integer(current.field_3))
     {
         register_values[current.field_1] = register_values[current.field_2] - stoi(current.field_3);
+        temp.RegisterChanged = current.field_1 + " = " + to_string(register_values[current.field_1]);
     }
     else
     {
         register_values[current.field_1] = register_values[current.field_2] - register_values[current.field_3];
+        temp.RegisterChanged = current.field_1 + " = " + to_string(register_values[current.field_1]);
     }
-    temp.RegisterChanged = current.field_1 + " = " + to_string(register_values[current.field_1]);
+
     temp.instruction = findInstruction(current);
     parallelAction(temp);
     PC++;
@@ -795,15 +803,21 @@ void mul()
     freeRegister();
     clock_cycles++;
     toPrint temp = print_normal_operation();
-    if (is_integer(current.field_3))
+    if (current.field_1 == "$r0")
+    {
+        temp.RegisterChanged = "$r0 = " + to_string(0);
+    }
+    else if (is_integer(current.field_3))
     {
         register_values[current.field_1] = register_values[current.field_2] * stoi(current.field_3);
+        temp.RegisterChanged = current.field_1 + " = " + to_string(register_values[current.field_1]);
     }
     else
     {
         register_values[current.field_1] = register_values[current.field_2] * register_values[current.field_3];
+        temp.RegisterChanged = current.field_1 + " = " + to_string(register_values[current.field_1]);
     }
-    temp.RegisterChanged = current.field_1 + " = " + to_string(register_values[current.field_1]);
+
     temp.instruction = findInstruction(current);
     parallelAction(temp);
     PC++;
@@ -814,12 +828,21 @@ void addi()
     freeRegister();
     clock_cycles++;
     toPrint temp = print_normal_operation();
-    register_values[current.field_1] = register_values[current.field_2] + stoi(current.field_3);
-    temp.RegisterChanged = current.field_1 + " = " + to_string(register_values[current.field_1]);
+    if (current.field_1 == "$r0")
+    {
+        temp.RegisterChanged = "$r0 = " + to_string(0);
+    }
+    else
+    {
+        register_values[current.field_1] = register_values[current.field_2] + stoi(current.field_3);
+        temp.RegisterChanged = current.field_1 + " = " + to_string(register_values[current.field_1]);
+    }
+
     temp.instruction = findInstruction(current);
     parallelAction(temp);
     PC++;
 }
+
 void beq()
 {
     struct Instruction current = instructs[PC];
@@ -858,12 +881,17 @@ void slt()
     freeRegister();
     clock_cycles++;
     toPrint temp = print_normal_operation();
-    if (is_integer(current.field_3))
+    if (current.field_1 == "$r0")
+    {
+        temp.RegisterChanged = "$r0 = " + to_string(0);
+    }
+    else if (is_integer(current.field_3))
     {
         if (stoi(current.field_3) > register_values[current.field_2])
             register_values[current.field_1] = 1;
         else
             register_values[current.field_1] = 0;
+        temp.RegisterChanged = current.field_1 + " = " + to_string(register_values[current.field_1]);
     }
     else
     {
@@ -871,9 +899,9 @@ void slt()
             register_values[current.field_1] = 1;
         else
             register_values[current.field_1] = 0;
+        temp.RegisterChanged = current.field_1 + " = " + to_string(register_values[current.field_1]);
     }
     PC++;
-    temp.RegisterChanged = current.field_1 + " = " + to_string(register_values[current.field_1]);
     temp.instruction = findInstruction(current);
     parallelAction(temp);
 }
@@ -889,7 +917,8 @@ void j()
 void lw()
 {
     struct Instruction current = instructs[PC];
-    //freeRegister();
+    if (current.field_1 == "$r0")
+        return;
     optimizeLw();
     int address = register_values[current.field_3] + stoi(current.field_2);
     DRAM_ins temp;
@@ -1010,6 +1039,7 @@ void sw()
 void process()
 {
     int execution_no = 1;
+    PC = 0;
     for (int j = 0; j < instructs.size(); j++)
     {
         ins_count[j] = 0;
@@ -1116,6 +1146,7 @@ void PrintData()
 }
 int main(int argc, char *argv[])
 {
+    validFile = true;
     if (argc < 4)
     {
         cout << "Invalid arguments\n";
@@ -1136,7 +1167,6 @@ int main(int argc, char *argv[])
     initialise_Registers();
     map_operations();
     validFile = true;
-    infinite_loop = false;
     while (getline(file, current_line))
     {
         pair<bool, Instruction> temp = Create_structs(current_line, register_values);
@@ -1150,14 +1180,13 @@ int main(int argc, char *argv[])
         cout << "Invalid MIPS program" << endl;
         return -1;
     }
-    // perform_operations(false);
-
-    if (infinite_loop)
+    pair<bool, bool> sim = simulate(instructs, operation, register_numbers);
+    if (sim.first)
     {
         cout << "Time limit exceeded !" << endl;
         return -1;
     }
-    if (!validFile)
+    if (sim.second)
     {
         cout << "Invalid MIPS program" << endl; //due to wrong lw and sw addresses
         return -1;
