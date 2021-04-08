@@ -5,7 +5,7 @@
 #include <map>
 #include <deque>
 #include <iomanip>
-#include "parser.hpp"
+#include "simulator.hpp"
 using namespace std;
 bool f = false;
 int ROW_ACCESS_DELAY, COL_ACCESS_DELAY;
@@ -18,6 +18,7 @@ struct toPrint
     string RegisterChanged;
     string DRAMoperation;
     string DRAMchanges;
+    string queueOp = "N.A.";
 };
 
 vector<toPrint> prints;
@@ -942,7 +943,6 @@ void lw()
         {
             // assign a non empty row
             Assign_new_row();
-            //starting_cycle_num = clock_cycles;
             ins_register[current.field_1] = address / 1024;
             DRAM_queues[address / 1024].push_back(temp);
             total_queue_size++;
