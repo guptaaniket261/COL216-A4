@@ -903,7 +903,7 @@ void lw()
         toPrint curr;
         curr.startingCycle = clock_cycles;
         curr.endingCycle = clock_cycles;
-        curr.instruction = "N.A";
+        curr.instruction = findInstruction(current);
         curr.RegisterChanged = "N.A";
         curr.DRAMoperation = "DRAM request issued";
         curr.DRAMchanges = "N.A";
@@ -967,7 +967,7 @@ void sw()
         toPrint curr;
         curr.startingCycle = clock_cycles;
         curr.endingCycle = clock_cycles;
-        curr.instruction = "N.A";
+        curr.instruction = findInstruction(current);
         curr.RegisterChanged = "N.A";
         curr.DRAMoperation = "DRAM request issued";
         curr.DRAMchanges = "N.A";
