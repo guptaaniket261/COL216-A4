@@ -679,7 +679,6 @@ void optimizeLw()
             remove(current.field_1);
         else
             perform_row(current.field_1);
-        cout << "fffff";
     }
 
     if (ins_register[current.field_3] != -1)
@@ -983,7 +982,10 @@ void lw()
 {
     struct Instruction current = instructs[PC];
     if (current.field_1 == "$r0")
+    {
+        PC++;
         return;
+    }
     optimizeLw();
     int address = register_values[current.field_3] + stoi(current.field_2);
     DRAM_ins temp;
@@ -997,9 +999,9 @@ void lw()
         toPrint curr;
         curr.startingCycle = clock_cycles;
         curr.endingCycle = clock_cycles;
-        curr.instruction = findInstruction(current);
+
         curr.RegisterChanged = "N.A";
-        curr.DRAMoperation = "DRAM request issued for " + curr.instruction;
+
         curr.DRAMchanges = "N.A";
 
         //we may have to initiate a new DRAM request from some instruction present inside the queue
@@ -1012,10 +1014,13 @@ void lw()
             total_queue_size++;
             // now we need to initiate a DRAM request for that, for printing purposes
             curr.instruction = findInstruction(instructs[currentInstruction.ins_number]);
+            curr.DRAMoperation = "DRAM request issued for " + curr.instruction;
+            prints.push_back(curr);
         }
         else
         {
             curr.instruction = findInstruction(current);
+            curr.DRAMoperation = "DRAM request issued for " + curr.instruction;
             currentInstruction = temp;
             ins_register[current.field_1] = address / 1024;
             curr_ins_num = PC;
@@ -1032,9 +1037,9 @@ void lw()
             col_access_num = address % 1024;
             if (type_ins != 0)
                 activateRow(address / 1024);
+            prints.push_back(curr);
+            row_buffer = address / 1024;
         }
-        prints.push_back(curr);
-        row_buffer = address / 1024;
     }
     else
     {
@@ -1066,16 +1071,18 @@ void sw()
         curr.RegisterChanged = "N.A";
         curr.DRAMoperation = "DRAM request issued for " + curr.instruction;
         curr.DRAMchanges = "N.A";
-        prints.push_back(curr);
+
         if (total_queue_size != 0)
         {
             // assign a non empty row
             Assign_new_row();
             starting_cycle_num = clock_cycles;
-            ins_register[current.field_1] = address / 1024;
             DRAM_queues[address / 1024].push_back(temp);
             total_queue_size++;
             // now we need to initiate a DRAM request for that, for printing purposes
+            curr.instruction = findInstruction(instructs[currentInstruction.ins_number]);
+            curr.DRAMoperation = "DRAM request issued for " + curr.instruction;
+            prints.push_back(curr);
         }
         else
         {
@@ -1093,6 +1100,7 @@ void sw()
             col_access_num = address % 1024;
             if (type_ins != 0)
                 activateRow(address / 1024);
+            prints.push_back(curr);
         }
     }
     else
@@ -1260,7 +1268,6 @@ int main(int argc, char *argv[])
         else
         {
             validFile = false;
-            cout << current_line << endl;
         }
     }
     if (!validFile)
@@ -1278,7 +1285,6 @@ int main(int argc, char *argv[])
     }
     if (sim.second)
     {
-        cout << "f";
         cout << "Invalid MIPS program" << endl; //due to wrong lw and sw addresses
         return -1;
     }
