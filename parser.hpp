@@ -6,8 +6,6 @@
 #include <deque>
 #include <iomanip>
 using namespace std;
-
-
 map<string,int> labels;
 struct Instruction
 {
@@ -154,6 +152,17 @@ string Match_Instruction(int start, int end, string file_string)
 }
 //handle the case when integer is beyond instruction memory at execution time, and case of r0
 bool validLabel(string temp){
+    if (temp.size() ==0 ){return false;}
+    int first_char = (int)temp[0];
+    if (!(first_char == 95 || (first_char>=65 && first_char<=90) || (first_char>=97 && first_char<=122))){
+        return false;}
+    //first letter can be underscore or a letter
+    for (int i=1;i<temp.size();i++){
+        if (!(first_char == 95 || (first_char>=65 && first_char<=90) || (first_char>=97 && first_char<=122) || (first_char>=48 && first_char<=57))){
+            //rest can be letters, underscores or digits
+            return false;
+        }
+    }
     return true;
 }
 
