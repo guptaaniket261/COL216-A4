@@ -90,7 +90,8 @@ void beq_sim(vector<Instruction> instructs)
     struct Instruction current = instructs[PC];
     if (register_values_sim[current.field_1] == register_values_sim[current.field_2])
     {
-        if(labels.find(current.field_3) == labels.end()){
+        if (labels.find(current.field_3) == labels.end())
+        {
             validFile = false;
             return;
         }
@@ -104,7 +105,8 @@ void bne_sim(vector<Instruction> instructs)
     struct Instruction current = instructs[PC];
     if (register_values_sim[current.field_1] != register_values_sim[current.field_2])
     {
-        if(labels.find(current.field_3) == labels.end()){
+        if (labels.find(current.field_3) == labels.end())
+        {
             validFile = false;
             return;
         }
@@ -139,7 +141,8 @@ void slt_sim(vector<Instruction> instructs)
 void j_sim(vector<Instruction> instructs)
 {
     struct Instruction current = instructs[PC];
-    if(labels.find(current.field_1) == labels.end()){
+    if (labels.find(current.field_1) == labels.end())
+    {
         validFile = false;
         return;
     }

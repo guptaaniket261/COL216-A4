@@ -1,30 +1,29 @@
+#1.) Instructions have memory already in increasing order (no optimization case)
+#2.) all instructions are independent of each other and optimisation takes place
+#3.) Instructions other than lw/sw may depend on some previous lw instruction and optimization takes place
+#4.) Our lw advanced optimization takes place due to repeated register in lw. (remove the previous instructions from queue)
+#5.) Our sw advanced optimization takes place due to same memory values in consecutive sw instructions.
+#6.) Instructions other than lw/sw may have a register present in some previous sw instruction and optimization takes place as we store the contents of the register
+#used in sw while adding in the queue.
+
 main:
 	addi $s0, $zero, 1000
-	addi $s1, $zero, 0
-	addi $s2, $zero, 10
-	addi $t1, $zero, 0
+	addi $s1, $zero, 2500
+	addi $t0, $zero, 1
+	addi $t1, $zero, 2
+	addi $t2, $zero, 3
+	addi $t3, $zero, 4
 
-initloop: 
-	addi $t1, $t1, 1
-	sw $t1, 0($s0)
-	addi $s0, $s0, 4
-	addi $s1, $s1, 1
-	slt $s3, $s1, $s2
-	bne $s3, $zero, initloop
-
+	lw $t0, 0($s0)	#store 1 at location 1000
+	lw $t1, 0($s1)	#store 2 at location 2500
+	
 	addi $s0, $zero, 1000
-	addi $s1, $zero, 0
-	addi $s3, $zero, 0
-	addi $s2, $zero, 9
+	addi $s1, $zero, 2500
+	addi $t2, $zero, 3
+	addi $t3, $zero, 4
 
-sumloop:
-	lw $t0, 0($s0)
-	addi $s0, $s0, 4
-	lw $t1, 0($s0)
-	add $t2, $t0, $t1
-	sw $t2, 0($s0)
-	addi $s1, $s1, 1
-	slt $s3, $s1, $s2
-	bne $s3, $zero, sumloop
+	addi $t2, $zero, 3
+	addi $t3, $zero, 4
+
 
 exit:

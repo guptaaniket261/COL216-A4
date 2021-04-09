@@ -6,7 +6,7 @@
 #include <deque>
 #include <iomanip>
 using namespace std;
-map<string,int> labels;
+map<string, int> labels;
 struct Instruction
 {
     string name;
@@ -30,7 +30,8 @@ bool is_integer(string s)
     return true;
 }
 
-map<string,int> getLabels(){
+map<string, int> getLabels()
+{
     return labels;
 }
 
@@ -151,14 +152,22 @@ string Match_Instruction(int start, int end, string file_string)
     return ""; //when no valid instruction found
 }
 //handle the case when integer is beyond instruction memory at execution time, and case of r0
-bool validLabel(string temp){
-    if (temp.size() ==0 ){return false;}
+bool validLabel(string temp)
+{
+    if (temp.size() == 0)
+    {
+        return false;
+    }
     int first_char = (int)temp[0];
-    if (!(first_char == 95 || (first_char>=65 && first_char<=90) || (first_char>=97 && first_char<=122))){
-        return false;}
+    if (!(first_char == 95 || (first_char >= 65 && first_char <= 90) || (first_char >= 97 && first_char <= 122)))
+    {
+        return false;
+    }
     //first letter can be underscore or a letter
-    for (int i=1;i<temp.size();i++){
-        if (!(first_char == 95 || (first_char>=65 && first_char<=90) || (first_char>=97 && first_char<=122) || (first_char>=48 && first_char<=57))){
+    for (int i = 1; i < temp.size(); i++)
+    {
+        if (!(first_char == 95 || (first_char >= 65 && first_char <= 90) || (first_char >= 97 && first_char <= 122) || (first_char >= 48 && first_char <= 57)))
+        {
             //rest can be letters, underscores or digits
             return false;
         }
@@ -166,50 +175,67 @@ bool validLabel(string temp){
     return true;
 }
 
-
-pair<bool,string> ifLabel(string ins){
-    string temp="";
-    int i=0;
-    while(i<ins.size() && ins[i]==' ')i++;
-    while(i<ins.size() && ins[i]!= ':' && ins[i]!= ' '){
-        temp+=ins[i];
+pair<bool, string> ifLabel(string ins)
+{
+    string temp = "";
+    int i = 0;
+    while (i < ins.size() && (ins[i] == ' ' || ins[i] == '\t'))
+        i++;
+    while (i < ins.size() && ins[i] != ':' && ins[i] != ' ' && ins[i] != '\t')
+    {
+        temp += ins[i];
         i++;
     }
-    int j=i+1;
-    while(j<ins.size()){
-        if(ins[j]!=' ')return {false,""};
+    int j = i + 1;
+    while (j < ins.size())
+    {
+        if (ins[j] != ' ' && ins[j] != '\t')
+            return {false, ""};
         j++;
     }
-    if(i<ins.size() && ins[i]==':' && validLabel(temp))return {true,temp};
-    else return {false,""};
+    if (i < ins.size() && ins[i] == ':' && validLabel(temp))
+        return {true, temp};
+    else
+        return {false, ""};
 }
 
-string removeComments(string file_string){
-    int i=0;
-    string temp="";
-    while(i<file_string.size() && file_string[i]!='#'){
-        temp+=file_string[i];
+string removeComments(string file_string)
+{
+    int i = 0;
+    string temp = "";
+    while (i < file_string.size() && file_string[i] != '#')
+    {
+        temp += file_string[i];
         i++;
     }
     return temp;
 }
 
- 
-
-string changeZero(string file_string){
-    string temp="";
-    if(file_string.size()<4)return file_string;
-    else{
-        int i=0;
-        while(i<file_string.size()){
-            if(file_string[i]!='z'){temp+=file_string[i];i++;}
-            else{
-                if(i+3<file_string.size() && file_string[i+1]=='e' && file_string[i+2]=='r' && file_string[i+3]=='o'){
-                    temp+="r0";
-                    i+=4;
+string changeZero(string file_string)
+{
+    string temp = "";
+    if (file_string.size() < 4)
+        return file_string;
+    else
+    {
+        int i = 0;
+        while (i < file_string.size())
+        {
+            if (file_string[i] != 'z')
+            {
+                temp += file_string[i];
+                i++;
+            }
+            else
+            {
+                if (i + 3 < file_string.size() && file_string[i + 1] == 'e' && file_string[i + 2] == 'r' && file_string[i + 3] == 'o')
+                {
+                    temp += "r0";
+                    i += 4;
                 }
-                else{
-                    temp+=file_string[i];
+                else
+                {
+                    temp += file_string[i];
                     i++;
                 }
             }
@@ -218,21 +244,34 @@ string changeZero(string file_string){
     }
 }
 
-
-
-pair<bool,pair<string,int>> findLabel(string file_string, int pos){
-    string temp1="";
-    int i=pos;
-    while(i<file_string.size() && file_string[i]==' '){i++;}
-    while(i<file_string.size() && file_string[i]!=' '){temp1+=file_string[i];i++;}
+pair<bool, pair<string, int>> findLabel(string file_string, int pos)
+{
+    string temp1 = "";
+    int i = pos;
+    while (i < file_string.size() && (file_string[i] == ' ' || file_string[i] == '\t'))
+    {
+        i++;
+    }
+    while (i < file_string.size() && file_string[i] != ' ' && file_string[i] != '\t')
+    {
+        temp1 += file_string[i];
+        i++;
+    }
     //cout<<temp1<<endl;
-    if(validLabel(temp1))return {true,{temp1,i}};
-    else return {false,{"",i}};
+    if (validLabel(temp1))
+        return {true, {temp1, i}};
+    else
+        return {false, {"", i}};
 }
 
-bool ifEmpty(string temp){
-    for(int i=0;i<temp.size();i++){
-        if(temp[i]!=' ')return false;
+bool ifEmpty(string temp)
+{
+    for (int i = 0; i < temp.size(); i++)
+    {
+        if (temp[i] != ' ' && temp[i] != '\t')
+        {
+            return false;
+        }
     }
     return true;
 }
@@ -244,13 +283,17 @@ pair<int, Instruction> Create_structs(string file_string, map<string, int> regis
     struct Instruction new_instr;
     // each line can contain atmost one instruction
     new_instr.name = ""; //default name
-    file_string =removeComments(file_string);
-    if(ifEmpty(file_string))return {2,new_instr};
-    pair<bool,string> lbl=ifLabel(file_string);
-    if(lbl.first){
-        labels[lbl.second]=pcValue+1;
+    file_string = removeComments(file_string);
+    if (ifEmpty(file_string))
+    {
+        return {2, new_instr};
+    }
+    pair<bool, string> lbl = ifLabel(file_string);
+    if (lbl.first)
+    {
+        labels[lbl.second] = pcValue + 1;
         // cout<<lbl.second<<" "<<labels[lbl.second];
-        return {2,new_instr};
+        return {2, new_instr};
     }
     file_string = changeZero(file_string);
     while (i < file_string.size())
@@ -273,7 +316,7 @@ pair<int, Instruction> Create_structs(string file_string, map<string, int> regis
                 //validFile = false;
                 return {0, new_instr};
             }
-             
+
             if (ins == "add" || ins == "sub" || ins == "mul" || ins == "slt" || ins == "beq" || ins == "bne" || ins == "addi")
             {
                 //now, there must be three registers ahead, delimited by comma
@@ -282,7 +325,7 @@ pair<int, Instruction> Create_structs(string file_string, map<string, int> regis
                 {
                     reg1_start = SearchForRegister(i + 4, file_string.size() - 1, file_string, register_values);
                 }
-                
+
                 else
                 {
                     reg1_start = SearchForRegister(i + 3, file_string.size() - 1, file_string, register_values);
@@ -316,7 +359,8 @@ pair<int, Instruction> Create_structs(string file_string, map<string, int> regis
                 int reg3_start = SearchForRegister(comma2Pos + 1, file_string.size() - 1, file_string, register_values);
                 //instead of third register, we can also have an integer value
                 pair<int, int> integer_indices = SearchForInteger(comma2Pos + 1, file_string.size() - 1, file_string);
-                pair<bool,pair<string,int>> labeldata = findLabel(file_string,comma2Pos + 1);
+                pair<bool, pair<string, int>> labeldata = findLabel(file_string, comma2Pos + 1);
+                //cout << labeldata.second.first << endl;
                 int index_looped;
                 if (reg3_start == -1 && integer_indices.first == -1 && !labeldata.first)
                 {
@@ -337,25 +381,29 @@ pair<int, Instruction> Create_structs(string file_string, map<string, int> regis
                         return {0, new_instr};
                     }
                 }
-                else if(integer_indices.first !=-1)
+                else if (integer_indices.first != -1)
                 {
-                    if (ins == "addi")
+                    if (ins == "addi" || ins == "add" || ins == "sub" || ins == "mul" || ins == "slt")
                     {
                         R3 = file_string.substr(integer_indices.first, integer_indices.second - integer_indices.first + 1);
                         index_looped = integer_indices.second + 1;
                     }
                     else
                     {
+
                         return {0, new_instr};
                     }
                 }
-                else{
-                    if(ins == "bne" || ins=="beq"){
-                        R3= labeldata.second.first;
+                else
+                {
+                    if (ins == "bne" || ins == "beq")
+                    {
+                        R3 = labeldata.second.first;
                         index_looped = labeldata.second.second;
                         //cout<<R3<<endl;
                     }
-                    else{
+                    else
+                    {
                         return {0, new_instr};
                     }
                 }
@@ -376,9 +424,10 @@ pair<int, Instruction> Create_structs(string file_string, map<string, int> regis
                 //     //validFile = false;
                 //     return {false, new_instr};
                 // }
-                
-                pair<bool,pair<string,int>> lblTOpc = findLabel(file_string , i+1);
-                if(!lblTOpc.first){
+
+                pair<bool, pair<string, int>> lblTOpc = findLabel(file_string, i + 1);
+                if (!lblTOpc.first)
+                {
                     return {0, new_instr};
                 }
                 new_instr.name = ins;
