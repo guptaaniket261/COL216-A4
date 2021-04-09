@@ -134,16 +134,14 @@ string findInstruction(Instruction current)
 }
 void reset_instruction()
 {
-
+    /*ins_register[currentInstruction]=-1*/
     curr_ins_num = -1;
-    ins_register[currentInstruction.reg] = -1;
     type_ins = -1;
-    //row_buffer = -1;
     starting_cycle_num = -1;
-    //currentInstruction = NULL;
     writeback_row_num = -1;
     col_access_num = -1;
 }
+
 void map_register_numbers()
 {
     //maps each register to a unique number between 0-31 inclusive
@@ -213,12 +211,11 @@ void initialise_Registers()
         ins_register[register_numbers[i]] = -1;
     }
 }
-void writeBack()
+void writeBack(int num_row)
 {
-
-    for (int i = writeback_row_num * 1024; i < writeback_row_num * 1024 + 1024; i++)
+    for (int i = num_row * 1024; i < num_row * 1024 + 1024; i++)
     {
-        memory[i] = ROW_BUFFER[i - writeback_row_num * 1024];
+        memory[i] = ROW_BUFFER[i - num_row * 1024];
     }
 }
 
@@ -337,7 +334,6 @@ void print(int endingCycle)
     curr.instruction = findInstruction(instructs[currentInstruction.ins_number]);
     curr.address = to_string((currentInstruction.ins_number) * 4);
     prints.push_back(curr);
-    //return curr;
 }
 
 //optimise sw here.
@@ -368,11 +364,12 @@ void perform_row(string reg)
             row_buffer_updates += (type_ins > 0) + 1;
         }
         int ending_cycle = starting_cycle_num + (type_ins)*ROW_ACCESS_DELAY + COL_ACCESS_DELAY;
-        f = true;
+        //cycle 2 mein dram request issued for lw $t0,x
+        //next instruction sw $t0, x then DRAM request will be issued again.
+        f = true; //
         print(ending_cycle);
         f = false;
         clock_cycles = ending_cycle;
-
         reset_instruction();
     }
 
@@ -408,12 +405,15 @@ void perform_row(string reg)
 
             else
             {
-
                 if (!found_reg_ins)
                 {
                     // generate string for printing function
 
                     //as will begin in a new clock cycle
+                    if (u.type == 0 && u.reg == reg)
+                    {
+                        found_reg_ins = true;
+                    }
                     clock_cycles++;
                     currentInstruction = u;
                     curr_ins_num = u.ins_number;
@@ -428,7 +428,7 @@ void perform_row(string reg)
                     else if (temp_type == 2)
                     {
                         writeback_row_num = row_buffer;
-                        writeBack();
+                        writeBack(writeback_row_num);
                         activateRow(num_row);
                     }
 
@@ -503,7 +503,7 @@ void complete_remaining()
             clock_cycles++;
             starting_cycle_num = clock_cycles;
             type_ins = 0;
-            int ending_cycle = starting_cycle_num + (type_ins)*ROW_ACCESS_DELAY + COL_ACCESS_DELAY;
+            int ending_cycle = starting_cycle_num + COL_ACCESS_DELAY;
             currentInstruction = u;
             curr_ins_num = u.ins_number;
             //starting_cycle_num = clock_cycles;
@@ -550,7 +550,7 @@ void complete_remaining()
             else if (temp_type == 2)
             {
                 writeback_row_num = row_buffer;
-                writeBack();
+                writeBack(writeback_row_num);
                 activateRow(num_row);
             }
 
@@ -596,10 +596,6 @@ void Assign_new_row()
         //assigning col_access_number
         //assign starting_cycle_num at callee loaction
         curr_register = temp.reg;
-        if (temp.type == 0)
-        {
-            ins_register[curr_register] = temp.memory_address / 1024;
-        }
         total_queue_size--; //as an element is popped
         return;
     }
@@ -620,7 +616,7 @@ void Assign_new_row()
                 if (type_ins == 2)
                 {
                     writeback_row_num = row_buffer;
-                    writeBack();
+                    writeBack(writeback_row_num);
                     activateRow(i);
                 }
                 starting_cycle_num = clock_cycles;
@@ -629,10 +625,6 @@ void Assign_new_row()
                 row_buffer = i;
                 //assign starting_cycle_num at callee loaction
                 curr_register = temp.reg;
-                if (temp.type == 0)
-                {
-                    ins_register[curr_register] = temp.memory_address / 1024;
-                }
                 total_queue_size--; //as an element is popped
                 break;
             }
@@ -782,6 +774,7 @@ void freeRegister()
     if (valid_register(current.field_3, register_values) && ins_register[current.field_3] != -1)
         row_order.push_back({ins_register[current.field_3], current.field_3});
     int i = 0;
+    sort(row_order.begin(), row_order.end());
     while (i < row_order.size())
     {
         perform_row(row_order[i].second);
@@ -912,8 +905,9 @@ void beq()
         PC = labelNo[current.field_3] - 1;
     }
     else
+    {
         PC++;
-
+    }
     temp.instruction = findInstruction(current);
     temp.address = to_string(old_PC * 4);
     parallelAction(temp);
@@ -930,8 +924,9 @@ void bne()
         PC = labelNo[current.field_3] - 1;
     }
     else
+    {
         PC++;
-
+    }
     temp.instruction = findInstruction(current);
     temp.address = to_string(old_PC * 4);
     parallelAction(temp);
@@ -993,62 +988,64 @@ void lw()
     temp.type = 0;
     temp.memory_address = address;
     temp.reg = current.field_1;
-    if (curr_ins_num == -1)
-    {
-        clock_cycles++;
-        toPrint curr;
-        curr.startingCycle = clock_cycles;
-        curr.endingCycle = clock_cycles;
+    // if (curr_ins_num == -1)
+    // {
+    //     //clock_cycles++;
+    //     // toPrint curr;
+    //     // curr.startingCycle = clock_cycles;
+    //     // curr.endingCycle = clock_cycles;
 
-        curr.RegisterChanged = "N.A";
+    //     // curr.RegisterChanged = "N.A";
 
-        curr.DRAMchanges = "N.A";
+    //     // curr.DRAMchanges = "N.A";
 
-        //we may have to initiate a new DRAM request from some instruction present inside the queue
-        if (total_queue_size != 0)
-        {
-            // assign a non empty row
-            Assign_new_row();
-            ins_register[current.field_1] = address / 1024;
-            DRAM_queues[address / 1024].push_back(temp);
-            total_queue_size++;
-            // now we need to initiate a DRAM request for that, for printing purposes
-            curr.instruction = findInstruction(instructs[currentInstruction.ins_number]);
-            curr.DRAMoperation = "DRAM request issued for " + curr.instruction;
-            prints.push_back(curr);
-        }
-        else
-        {
-            curr.instruction = findInstruction(current);
-            curr.DRAMoperation = "DRAM request issued for " + curr.instruction;
-            currentInstruction = temp;
-            ins_register[current.field_1] = address / 1024;
-            curr_ins_num = PC;
-            starting_cycle_num = clock_cycles;
-            type_ins = findType(address / 1024);
-            //cout << type_ins << endl;
-            //copy contents from memory to row buffer
-            if (type_ins == 2)
-            {
-                writeback_row_num = row_buffer;
-                writeBack();
-            }
+    //     //we may have to initiate a new DRAM request from some instruction present inside the queue
+    //     //if (total_queue_size != 0)
+    //     //{
+    //         // assign a non empty row
+    //         //Assign_new_row();
+    //         //ins_register[current.field_1] = address / 1024;
+    //        DRAM_queues[address / 1024].push_back(temp);
+    //         //total_queue_size++;
+    //         // now we need to initiate a DRAM request for that, for printing purposes
+    //         //curr.instruction = findInstruction(instructs[currentInstruction.ins_number]);
+    //         //curr.DRAMoperation = "DRAM request issued for " + curr.instruction;
+    //         //prints.push_back(curr);
+    //     }
+    //     else
+    //     {
+    //         curr.instruction = findInstruction(current);
+    //         curr.DRAMoperation = "DRAM request issued for " + curr.instruction;
+    //         currentInstruction = temp;
+    //         ins_register[current.field_1] = address / 1024;
+    //         curr_ins_num = PC;
+    //         starting_cycle_num = clock_cycles;
+    //         type_ins = findType(address / 1024);
+    //         //cout << type_ins << endl;
+    //         //copy contents from memory to row buffer
+    //         if (type_ins == 2)
+    //         {
+    //             writeback_row_num = row_buffer;
+    //             writeBack(writeback_row_num);
+    //         }
 
-            col_access_num = address % 1024;
-            if (type_ins != 0)
-                activateRow(address / 1024);
-            prints.push_back(curr);
-            row_buffer = address / 1024;
-        }
-    }
-    else
-    {
-        ins_register[current.field_1] = address / 1024;
-        DRAM_queues[address / 1024].push_back(temp);
-        total_queue_size++;
-    }
+    //         col_access_num = address % 1024;
+    //         if (type_ins != 0)
+    //         {
+    //             activateRow(address / 1024);
+    //         }
+    //         prints.push_back(curr);
+    //         row_buffer = address / 1024;
+    //     }
+    // }
+
+    ins_register[current.field_1] = address / 1024;
+    DRAM_queues[address / 1024].push_back(temp);
+    total_queue_size++;
+
     PC++;
 }
+
 void sw()
 {
     struct Instruction current = instructs[PC];
@@ -1061,53 +1058,54 @@ void sw()
     temp.memory_address = address;
     temp.reg = current.field_1;
     temp.value = register_values[current.field_1];
-    if (curr_ins_num == -1)
-    {
-        clock_cycles++;
-        toPrint curr;
-        curr.startingCycle = clock_cycles;
-        curr.endingCycle = clock_cycles;
-        curr.instruction = findInstruction(current);
-        curr.RegisterChanged = "N.A";
-        curr.DRAMoperation = "DRAM request issued for " + curr.instruction;
-        curr.DRAMchanges = "N.A";
+    // if (curr_ins_num == -1)
+    // {
+    //     clock_cycles++;
+    //     toPrint curr;
+    //     curr.startingCycle = clock_cycles;
+    //     curr.endingCycle = clock_cycles;
+    //     curr.instruction = findInstruction(current);
+    //     curr.RegisterChanged = "N.A";
+    //     curr.DRAMoperation = "DRAM request issued for " + curr.instruction;
+    //     curr.DRAMchanges = "N.A";
 
-        if (total_queue_size != 0)
-        {
-            // assign a non empty row
-            Assign_new_row();
-            starting_cycle_num = clock_cycles;
-            DRAM_queues[address / 1024].push_back(temp);
-            total_queue_size++;
-            // now we need to initiate a DRAM request for that, for printing purposes
-            curr.instruction = findInstruction(instructs[currentInstruction.ins_number]);
-            curr.DRAMoperation = "DRAM request issued for " + curr.instruction;
-            prints.push_back(curr);
-        }
-        else
-        {
-            currentInstruction = temp;
-            curr_ins_num = PC;
-            starting_cycle_num = clock_cycles;
-            type_ins = findType(address / 1024);
-            //copy contents from memory to row buffer
-            if (type_ins == 2)
-            {
-                writeback_row_num = row_buffer;
-                writeBack();
-            }
-            row_buffer = address / 1024;
-            col_access_num = address % 1024;
-            if (type_ins != 0)
-                activateRow(address / 1024);
-            prints.push_back(curr);
-        }
-    }
-    else
-    {
-        DRAM_queues[address / 1024].push_back(temp);
-        total_queue_size++;
-    }
+    //     if (total_queue_size != 0)
+    //     {
+    //         // assign a non empty row
+    //         Assign_new_row();
+    //         starting_cycle_num = clock_cycles;
+    //         DRAM_queues[address / 1024].push_back(temp);
+    //         total_queue_size++;
+    //         // now we need to initiate a DRAM request for that, for printing purposes
+    //         curr.instruction = findInstruction(instructs[currentInstruction.ins_number]);
+    //         curr.DRAMoperation = "DRAM request issued for " + curr.instruction;
+    //         prints.push_back(curr);
+    //     }
+    //     else
+    //     {
+    //         currentInstruction = temp;
+    //         curr_ins_num = PC;
+    //         starting_cycle_num = clock_cycles;
+    //         type_ins = findType(address / 1024);
+    //         //copy contents from memory to row buffer
+    //         if (type_ins == 2)
+    //         {
+    //             writeback_row_num = row_buffer;
+    //             writeBack(writeback_row_num);
+    //         }
+    //         row_buffer = address / 1024;
+    //         col_access_num = address % 1024;
+    //         if (type_ins != 0)
+    //         {
+    //             activateRow(address / 1024);
+    //         }
+    //         prints.push_back(curr);
+    //     }
+    // }
+
+    DRAM_queues[address / 1024].push_back(temp);
+    total_queue_size++;
+
     PC++;
 }
 void process()
@@ -1166,8 +1164,7 @@ void process()
     }
     if (row_buffer != -1)
     {
-        writeback_row_num = row_buffer;
-        writeBack();
+        writeBack(row_buffer);
     }
 }
 

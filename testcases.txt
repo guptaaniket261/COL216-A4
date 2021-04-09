@@ -1,427 +1,327 @@
-All the test cases are run on both the parts so that the difference in both parts is clear:
-
-CLASS 1: Only lw instructions are present
-
-Case 1.1: Each lw is immediately followed by another lw (outputs must be same for both)
-
-ROW_ACCESS_DELAY = 4, COL_ACCESS_DELAY = 2
-
-addi $t0, $t0, 5
-addi $t1, $t1, 7
-mul $t1, $t1, $t0
-j 6
-lw $t1, 2004($s0)
-lw $t0, 2000($zero)
-lw $t2, 1996($s1)
-lw $t3, 60($zero)
-
-Case 1.2: An lw is only blocked by another lw instruction (in part 2)
-
-ROW_ACCESS_DELAY =5, COL_ACCESS_DELAY =3
-
-addi $t4,$t4, -20
-bne $t4, $zero), 4
-sub $t4, $t4, -5
-lw $t4, 4000($zero)
-sub $t2, $t2, 14
-mul $t2, $t2, 15
-lw $t2, 5000($zero)
-addi $s6, $s6, 20
-mul $s6, $s6, 3
-beq $s6, $zero), 9
-lw $s6, 5008($zero)
-
-Case 1.3: An lw is blocked only by a command containing the register involving lw (in part 2)
-
-ROW_ACCESS_DELAY = 8, COL_ACCESS_DELAY =4
-
-sub $t3, $t3, 20
-lw $t3, 6000($zero)
-addi $t4,$t4, 13
-bne $t4, $zero), 6
-addi $s6, $s6, 11
-mul $t4,$t4,$t4
-mul $t3,$t3,$t3
-lw $t4, 1800($zero)
-addi $t4, $t4, 16
-
-Case 1.4: No lw instruction is ever blocked (in part 2)
-
-ROW_ACCESS_DELAY = 1, COL_ACCESS_DELAY =1
-
-lw $t3, 2004($zero)
-addi $t4, $t4, 19
-j 5
-sub $t3, $t3, 10
-addi $t3, $t3, 18
-sub $t2, $t2, 14
-lw $t2, 5000($zero)
-mul $t3, $t3, $t3
-bne $t4, $t3, 11
-addi $t2, $t2, 20
-
-
-CLASS 2: Only sw instructions are present
-
-Case 2.1: Each sw is immediately followed by another sw (outputs must be same for both)
-
-ROW_ACCESS_DELAY = 10, COL_ACCESS_DELAY =5
-
-addi $t2, $t2, 6
-addi $t1, $t1, 12
-mul $t1, $t1, $t1
-j 5
-sw $t1, 4004($s0)
-sw $t0, 6000($zero)
-sw $t2, 2996($s1)
-sw $t3, 100($zero)
-
-
-Case 2.2: An sw is only blocked by another sw (in part 2)
-
-ROW_ACCESS_DELAY = 9, COL_ACCESS_DELAY =2
-
-sub $t3, $t3, 20
-sw $t3, 8000($zero)
-addi $t3,$t3, 19
-bne $t3, $zero), 6
-addi $s6, $s6, 11
-add $t3,$t3,$t3
-sw $s6, 800($zero)
-addi $s6, $s6, 6
-
-Case 2.3: No sw instruction is ever blocked (in part 2)
-
-ROW_ACCESS_DELAY =1, COL_ACCESS_DELAY =1
-
-addi $t4, $t4, 20
-sw $t4, 120($zero)
-addi $t4, $t4, 60
-addi $t2, $t2,12
-sw $t2, 1000($zero)
-sub $t2, $t2, $t4
-j 8
-sw $t2, 6000($zero)
-
-CLASS 3: Both lw and sw instructions are present
-
-Case 3.1: lw and sw instructions occur only consecutively
-
-ROW_ACCESS_DELAY =10, COL_ACCESS_DELAY = 8
-
-addi $t6, $t6, 10
-addi $t9, $t9, -30
-sw $t6, 1200($zero)
-lw $t7, 1200($zero)
-lw $t8, 1200($zero)
-sw $t9, 9000($zero)
-
-Case 3.2: No lw or sw instruction is ever blocked
-
-ROW_ACCESS_DELAY = 1, COL_ACCESS_DELAY =1
-
-beq $s0, $zero), 3
-j 1
-lw $s0, 3000($zero)
-addi $t3,$t3, 18
-bne $t3, $zero), 6
-sw $t3, 1600($zero)
-addi $t3, $t3, 30
-addi $t3, $t3, -20
-mul $t4, $t3,$t3
-lw $t4,60($zero)
-addi $t5,$t5,30
-
-Case 3.3: Some lw and sw instructions are blocked
-
-ROW_ACCESS_DELAY =2, COL_ACCESS_DELAY =1
-
-addi $t0,$t0, 40
-lw $t0, 1200($zero)
-addi $t1,$t1, 60
-j 7
-addi $s0, $s0, 10
-addi $t0,$t0, 10
-mul $t0,$t0, $t0
-sw $t0, 3000($zero)
-addi $t5, $t5, 10
-lw $t6, 3000($zero)
-sub $t0, $t0,$t5
-addi $s3, $s3, 30
-add $t0,$t0,$s3
-sw $s3, 1024($zero)
-sw $t0, 5600($zero)
-
-CLASS 4: Erroneous programs
-
-Case 4.1: Error while parsing (wrong syntax)
-
-ROW_ACCESS_DELAY =1, COL_ACCESS_DELAY =1
-
-addi $t0, $t0, 5
-lw $register1, 100($zero)
-
-Case 4.2: Addresses given to lw/sw not divisible by 4
-
-ROW_ACCESS_DELAY =1, COL_ACCESS_DELAY =1
-
-lw $t0, 13($zero)
-
-Case 4.3: Program enters an infinite loop
-
-ROW_ACCESS_DELAY =1, COL_ACCESS_DELAY =1
-
-addi $t0,$t0,1
-j 1
-
-Case 4.4: Addresses given to lw, sw overlap with instruction addresses
-
-ROW_ACCESS_DELAY =1, COL_ACCESS_DELAY =1
-
-addi $t0, $t0, 10
-sw $t0, 0($zero)
-
-Case 4.5: Invalid values of Row/column access delays
-
-ROW_ACCESS_DELAY = -1, COL_ACCESS_DELAY =1
-
-addi $t0, $t0, 1
-
-Case 4.6: $zero) register is tried to be changed
-
-ROW_ACCESS_DELAY = 1, COL_ACCESS_DELAY =1
-
-addi $zero), $zero), 1
-
-
-
-///////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////
-
-
-Type 1: No lw/sw instruction
-
-Testcase 1.1
-
-ROW_ACCESS_DELAY=10
-COL_ACCESS_DELAY=2
-
-addi $t0, $t0, 20
-addi $t1, $t1, 13
-mul $s0, $t0, $t1
-sub $s1, $s1, 10
-bne $t0, $s0, 8
-add $t4, $s0, $s0
-beq $t0, $t0, 11
-mul $t5, $t4, $t0
-sub $t0, $t0, 25
-
-Testcase 1.2
-
-ROW_ACCESS_DELAY=10
-COL_ACCESS_DELAY=2
-
-add $t0, $t0, 30
-sub $t1, $t1, -15
-mul $t2, $t2, 1
-beq $t1, $t2, 5
-bne $t1, $t2, 6
-j 7
-slt $t4, $t1, $t0
-addi $t8, $t8, 99
-
-=========================================================================================================================================================
-
-
-Type 2: Single lw followed by independent instructions
+CASE 1 : Instructions have memory already in increasing order (no optimization case)
+
+1.1 
+Parameters: 5,2
+
+main:
+	addi $t0, $t0, 5
+	addi $t5, $t5, 4
+	add $t1, $zero, $t0
+	addi $t2, $t2, 40
+	mul $t1, $t1, $t0
+	sw $t1, 1000($zero)
+	sw $t2, 1600($zero)
+	lw $t3, 1600($zero)
+	addi $t3,$t3, 100
+	sw $t3, 2000($zero)
+	lw $t5, 2000($zero)
+	sw $t0, 2400($t5)
+	addi $t0,$t0, 20
+	
+exit:
+
+1.2
+
+Parameters: 4,4
+main:
+	sub $t0,$t0, -10
+	addi $t1, $t1, 10
+	beq $t0, $t1, rest
+	lw $t0, 6000($zero)
+
+	rest:
+		sw $t0, 4000($zero)
+		addi $t3,$t3,40
+		lw $t6, 4000($zero)
+		mul $t6,$t6,$t0
+		sw $t6, 6000($zero)
+		lw $t7, 6000($zero)
+		addi $t9,$t9, 20
+		j exit
+		lw $t8, 200($zero)
+exit:
+
+1.3
+
+Parameters: 10,2
+
+main:
+	addi $t3, $t3, 25
+	addi $t6, $t6, -10
+	sw $t6, 100($zero)
+	bne $t3,$t6, l1
+	lw $t5 ,20($zero)
+
+	l1:
+		lw $t2,200($zero)
+		sw $t3, 500($zero)
+		addi $t3, $t3, 25
+		add $t3,$t3, $t6
+		j _l2
+	_l2:
+		lw $t5, 500($zero)
+
+	
+exit:
+
+Type 2: All instructions are independent of each other and optimisation takes place
 
 Testcase 2.1
 
-ROW_ACCESS_DELAY=4
-COL_ACCESS_DELAY=1
+main:
+	addi $s0, $zero, 1000
+	addi $s1, $zero, 2400
+	addi $t0, $t0, 1
+	addi $t1, $t1, 2
+	sw $t0, 0($s0)	
+	sw $t1, 0($s1)
 
-add $t8, $t8, 1000
-lw $t9, 0($t8)
-add $t0, $t0, 30
-sub $t1, $t1, -15
-addi $t8, $t8, 99
-mul $t2, $t2, 1
-beq $t1, $t2, 5
-beq $t1, $t2, 6
-slt $t4, $t1, $t0
+	addi $t2, $zero, 3
+	addi $t3, $zero, 4
+
+	sw $t2, 16($s0)	
+	sw $t4, 16($s1)	
+
+	lw $t7, 8($s0)
+	lw $t8, 8($s1)
+	lw $t5, 4($s0)
+	lw $t6, 4($s1)
+exit:
 
 Testcase 2.2
 
-ROW_ACCESS_DELAY=5
-COL_ACCESS_DELAY=2
-
-add $t0, $t0, 1000
-lw $t1, 24($t0)
-add $t2, $t2, 55
-sub $t3, $t3, -99
-mul $t2, $t2, $t3
-
-
-
-=========================================================================================================================================================
-
-
-Type 3: Single lw followed by some dependent instructions
-
-Testcase 3.1
-
-ROW_ACCESS_DELAY=4
-COL_ACCESS_DELAY=3
-
-add $t0, $t0, 2000
-lw $t1, 48($t0)
-addi $t2, $t2, 50
-sub $t3, $t3, -40
-add $t1, $t1, 10
-addi $t9, $t1, 90
-mul $t4, $t9, $t1
-
-Testcase 3.2
-
-ROW_ACCESS_DELAY=6
-COL_ACCESS_DELAY=3
-
-add $t0, $t0, 4000
-lw $t1, 24($t0)
-add $t1, $t1, 0
-addi $t2, $t2, 1000
-add $t3, $t3, $t2
-
-=========================================================================================================================================================
-
-Type 4: Single sw instruction
+main:
+	add $s0, $s0, 1000
+	addi $s1, $s1, 3000
+	add $t0, $t0, 10
+	add $t1, $t1, 20
+	add $t2, $t2, 40
+	sw $t0, 0($s0)
+	mul $t3, $t1, $t2
+	sw $t1, 0($s1)
+	lw $t2, 4($s0)
+	sub $t4, $t4, 50
+	lw $t3, 4($s0)
+exit:
 
 
+Testcase 2.3
+
+main:
+	add $s0, $s0, 1024
+	addi $s1, $s1, 1020
+	add $t0, $t0, 10
+	sw $t1, 0($s1)
+	lw $t2, 0($s0)
+	add $t3, $t3, 10
+	mul $t3, $t1, $t0
+	sw $t1, 4($s1)
+exit:
+
+CASE 3: Instructions other than lw/sw may depend on some previous lw instruction and optimization takes place
+
+3.1
+
+Parameters: 5,4
+
+main:
+	addi $t0, $t0, 30
+	add $t1, $t0,$t0
+	sub $t5,$t5, -20
+	lw $t6, 3000($zero)
+	addi $t9,$t9,40
+	j rem
+	rem:
+		sw $t5, 1000($zero)
+		lw $t7, 3004($zero)
+		sw $t1, 980($zero)
+		addi $t7, $t7,20
+		sub $s0, $s0, $t7
+	
+exit:
+
+3.2
+
+Parameters: 8,2
+
+main:
+	addi $s0, $s0, 200
+	addi $t2,$t2, 40
+	sub $t5, $t5, -50
+	sw $t2, 400($zero)
+	sw $t3, 1000($t2)
+	bne $t3, $t2, next
+	lw $t1, 1000($zero)
+
+	next:
+		sw $t2, 500($zero)
+		lw $t7, 1000($t2)
+		addi $t6, $t6, 100
+		sw $t6, 300($zero)
+		lw $t2, 1020($zero)
+		
+
+exit:
+
+3.3
+
+Parameters : 10,2
+
+main:
+	lw $t3, 2000($zero)
+	lw $t2, 200($zero)
+	lw $t5, 2040($zero)
+	lw $t6, 5000($zero)
+	sw $t7, 340($zero)
+	lw $t8, 5040($zero)
+	addi $t8, $t8, 20
+	sw $t8, 100($zero)
+	lw $t9, 6000($zero)
+	lw $s0, 240($zero)
+	lw $s1, 6000($zero)
+	sw $t2, 400($t8)
+
+
+exit:
+
+
+Type 4: Our lw advanced optimization takes place due to repeated register in lw. (remove the previous instructions from queue)
 
 Testcase 4.1
 
-ROW_ACCESS_DELAY=6
-COL_ACCESS_DELAY=4
+main:
+	add $s0, $s0, 1024
+	addi $s1, $s1, 1020
+	add $t0, $t0, 10
+	sub $t1, $t1, -80
+	sw $t0, 0($s1)
+	sw $t1, 0($s0)
+	lw $t2, 0($s0)
+	lw $t2, 0($s1) 
 
-add $t0, $r0, 2000
-add $t1, $t1, 5
-sw $t1, 8($t0)
-add $t1, $t1, $t1
-add $t0, $t0, $t0
+	sw $t2, 4($s1)
+exit:
 
 Testcase 4.2
 
-ROW_ACCESS_DELAY=7
-COL_ACCESS_DELAY=4
+main:
+	add $s0, $s0, 1020
+	addi $s1, $s1, 1024
+	add $t0, $t0, 10
+	mul $t1, $t0, $t0
+	sw $t0, 0($s1)
+	sw $t1, 0($s0)
+	lw $t2, 0($s1)
+	add $t3, 20($s1)
+	lw $t2, 0($s0) 
+	sw $t3, 100($s0)
+	lw $t2, 0($s1)
+exit:
 
-add $t0, $r0, 4000
-add $t1, $t1, -90
-sw $t1, 8($t0)
-add $t9, $t9, 10
-add $t1, $t1, $t1
-add $t0, $t0, $t0
+Testcase 4.3
 
-=========================================================================================================================================================
+main:
+	add $s0, $s0, 1020
+	addi $s1, $s1, 1024
+	sub $t0, $t0, 199
+	mul $t1, $t0, 40
+	sw $t0, 0($s1)
+	lw $t2, 0($s1)
+	add $t3, 20($s1)
+	lw $t2, 0($s0) 
+	sw $t3, 100($s0)
+	lw $t4, 0($s1)
+	lw $t4, 100($s0)
+exit:
+
+CASE 5: Our sw advanced optimization takes place due to same memory values in consecutive sw instructions.
+
+5.1
+
+Parameters: 12,4
+
+main:
+	addi $t3, $t3, 40
+	addi $t5, $t5, -20
+	mul $t6, $t3, $t5
+	sw $t3, 2000($zero)
+	sw $t5, 2000($zero)
+	sw $t6, 2000($zero)
+	sw $t7, 2000($zero)
+	addi $t2, $t2, 20
+	sw $t2, 2000($zero)
+
+exit:
+	
+5.2
+
+Parameters: 10, 4
+
+main:
+	addi $t0,$t0, 20
+	mul $t1, $t0, $t0
+	bne $t0, $t1, rem
+	lw $t0, 100($zero)
+
+	rem:
+		sw $t1, 3000($r0)
+		addi $t6, $t6, 40
+		sw $t6, 3000($r0)
+		addi $t1,$t1, 2000
+		sw $t1, 3000($r0)
+		beq $t1, $t6, exit
+		sw $t0, 3000($r0)
+		lw $t5, 3000($r0)
+	
+
+exit:
+
+5.3
+
+Parameters: 10,2
+
+main:
+	addi $t0, $t0, 20
+	addi $t1, $t1, 20
+	beq $t0, $t1, next
+	sw $t0, 2000($zero)
+	next:
+		lw $t3, 2000($zero)
+		sw $t3, 3000($zero)
+		addi $t2,$t2,20
+		sub $t3,$t3, $t1
+		addi $t6,$t6, 70
+		sw $t6, 3000($zero)
+		sw $t3, 3000($zero)
+		sw $t2, 3000($zero)
+		j exit
 
 
-Type 5: Multiple lw instructions
+exit:
 
-Testcase 5.1
-
-ROW_ACCESS_DELAY=2
-COL_ACCESS_DELAY=1
-
-add $t0, $r0, 8000
-add $t1, $t1, 160
-lw $t1, 0($t0)
-add $t1, $t2, 3
-lw $t1, 0($t0)
-lw $t2, 1000($t0)
-add $t3, $t3, 8
-add $t2, $t2, 88
-
-Testcase 5.2
-
-ROW_ACCESS_DELAY=4
-COL_ACCESS_DELAY=3
-
-add $t0, $r0, 16000
-add $t1, $t1, 160
-lw $t1, 0($t0)
-lw $t2, 1000($t0)
-lw $t1, 0($t0)
-add $t2, $t2, 88
-
-=========================================================================================================================================================
-
-
-Type 6: Multiple sw instructions
+Type 6 : Instructions other than lw/sw may have a register present in some previous sw instruction and optimization takes place as we store the contents of the register 
+used in sw while adding in the queue.
 
 Testcase 6.1
 
-ROW_ACCESS_DELAY=10
-COL_ACCESS_DELAY=2
-
-add $t0, $r0, 9000
-add $t1, $t1, -19
-add $t2, $t2, 5
-sw $t1, 0($t0)
-add $t1, $t1, 10
-sw $t2, 1000($t0)
-add $t2, $t2, 10
-sw $t2, 500($t0)
+main:
+	addi $s1, $s1, 1024
+	add $t0, $t0, 50
+	sw $t0, 0($s1)
+	add $t0, $t0, 99
+	lw $t0, 0($s1) 
+exit:
 
 Testcase 6.2
 
-ROW_ACCESS_DELAY=10
-COL_ACCESS_DELAY=3
-
-add $t0, $r0, 1400
-add $t1, $t1, 30
-add $t2, $t2, 6
-sw $t1, 0($t0)
-add $t0, $t0, 100
-sw $t2, 1000($t0)
-add $t2, $t2, 10
-
-=========================================================================================================================================================
-
-
-Type 7: Multiple lw/sw instructions together
-
-Testcase 7.1
-
-ROW_ACCESS_DELAY=10
-COL_ACCESS_DELAY=3
-
-add $t0, $r0, 1700
-add $t1, $t1, 13
-sw $t1, 0($t0)
-add $t1, $t1, $t1
-lw $t2, 0($t0)
-add $t2, $t2, 1
-slt $t3, $t2, $t1
-
-Testcase 7.2
-
-ROW_ACCESS_DELAY=15
-COL_ACCESS_DELAY=5
-
-add $t0, $t0, 1000
-add $t1, $t1, 69
-sw $t1, 0($t0)
-add $t1, $t1, 10
-sw $t1, 4($t0)
-mul $t1, $t1, $t1
-lw $t9, 0($t0)
-add $t7, $t7, 100
-add $t9, $t9, $t9
-
-
-
-
-
-
-
-
+main:
+	add $s0, $s0, 1020
+	add $t0, $t0, 50
+	sw $t0, 0($s1)
+	lw $t1, 0($s1)
+	add $t0, $t0, 99
+	add $t1, $t1, 99 
+	j exit
+	add $t3, $t3, 10 
+exit:
 
