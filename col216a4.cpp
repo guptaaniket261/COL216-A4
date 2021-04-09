@@ -23,6 +23,7 @@ struct toPrint
     string DRAMoperation;
     string DRAMchanges;
     string queueOp = "N.A.";
+    string address = "N.A"; //stores the address of the completed instruction, if so
 };
 
 vector<toPrint> prints;
@@ -326,6 +327,7 @@ void print(int endingCycle)
     else
         curr.DRAMchanges = "memory address " + to_string(currentInstruction.memory_address) + "-" + to_string(currentInstruction.memory_address + 3) + "=" + to_string(currentInstruction.value);
     curr.instruction = findInstruction(instructs[currentInstruction.ins_number]);
+    curr.address = to_string((currentInstruction.ins_number)*4);
     prints.push_back(curr);
     //return curr;
 }
@@ -694,12 +696,14 @@ void parallelAction(struct toPrint curr)
                 row_buffer_updates += type_ins;
                 curr.DRAMoperation = "Column access " + to_string(col_access_num);
                 curr.DRAMchanges = currentInstruction.reg + " = " + to_string(register_values[currentInstruction.reg]);
+                curr.address += ", "+to_string((currentInstruction.ins_number)*4);
             }
             else
             {
                 //update the row buffer with register value
                 curr.DRAMoperation = "Column access " + to_string(col_access_num);
                 curr.DRAMchanges = "memory address " + to_string(currentInstruction.memory_address) + "-" + to_string(currentInstruction.memory_address + 3) + "=" + to_string(currentInstruction.value);
+                curr.address += ", "+to_string(currentInstruction.ins_number*4);
                 ROW_BUFFER[col_access_num] = currentInstruction.value;
                 row_buffer_updates += type_ins + 1;
             }
@@ -722,6 +726,7 @@ void parallelAction(struct toPrint curr)
             else
             {
                 curr.DRAMoperation = "Column access " + to_string(currentInstruction.memory_address % 1024);
+                curr.address += ", "+to_string((currentInstruction.ins_number)*4);
                 if (currentInstruction.type == 0)
                     curr.DRAMchanges = currentInstruction.reg + " = " + to_string(register_values[currentInstruction.reg]);
                 else
@@ -808,8 +813,8 @@ void add()
     }
 
     temp.instruction = findInstruction(current);
+    temp.address = to_string(PC*4);
     parallelAction(temp);
-
     PC++;
 }
 
@@ -835,6 +840,7 @@ void sub()
     }
 
     temp.instruction = findInstruction(current);
+    temp.address = to_string(PC*4);
     parallelAction(temp);
     PC++;
 }
@@ -860,6 +866,7 @@ void mul()
     }
 
     temp.instruction = findInstruction(current);
+    temp.address = to_string(PC*4);
     parallelAction(temp);
     PC++;
 }
@@ -880,6 +887,7 @@ void addi()
     }
 
     temp.instruction = findInstruction(current);
+    temp.address = to_string(PC*4);
     parallelAction(temp);
     PC++;
 }
@@ -890,6 +898,7 @@ void beq()
     freeRegister();
     clock_cycles++;
     toPrint temp = print_normal_operation();
+    int old_PC =PC;
     if (register_values[current.field_1] == register_values[current.field_2])
     {
         PC = labelNo[current.field_3] - 1;
@@ -898,6 +907,7 @@ void beq()
         PC++;
 
     temp.instruction = findInstruction(current);
+    temp.address = to_string(old_PC*4);
     parallelAction(temp);
 }
 void bne()
@@ -906,6 +916,7 @@ void bne()
     freeRegister();
     clock_cycles++;
     toPrint temp = print_normal_operation();
+    int old_PC =PC;
     if (register_values[current.field_1] != register_values[current.field_2])
     {
         PC = labelNo[current.field_3] - 1;
@@ -914,6 +925,7 @@ void bne()
         PC++;
 
     temp.instruction = findInstruction(current);
+    temp.address = to_string(old_PC*4);
     parallelAction(temp);
 }
 void slt()
@@ -942,17 +954,20 @@ void slt()
             register_values[current.field_1] = 0;
         temp.RegisterChanged = current.field_1 + " = " + to_string(register_values[current.field_1]);
     }
-    PC++;
     temp.instruction = findInstruction(current);
+    temp.address = to_string(PC*4);
     parallelAction(temp);
+    PC++;
 }
 void j()
 {
     struct Instruction current = instructs[PC];
+    int old_PC = PC;
     PC = labelNo[current.field_1] - 1;
     clock_cycles++;
     toPrint temp = print_normal_operation();
     temp.instruction = findInstruction(current);
+    temp.address = to_string(old_PC*4);
     parallelAction(temp);
 }
 void lw()
@@ -1158,6 +1173,7 @@ void PrintData()
     cout << left << setw(20) << "Register changed";
     cout << left << setw(25) << "DRAM operations";
     cout << left << setw(30) << "DRAM changes";
+    cout << left << setw(40) << "Address of completed instruction";
     cout << endl;
     for (auto u : prints)
     {
@@ -1175,6 +1191,7 @@ void PrintData()
         cout << left << setw(20) << u.RegisterChanged;
         cout << left << setw(25) << u.DRAMoperation;
         cout << left << setw(30) << u.DRAMchanges;
+        cout << left << setw(40) << u.address;
         cout << "\n";
     }
     cout << "\n";
