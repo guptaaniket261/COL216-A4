@@ -355,12 +355,14 @@ void perform_row(string reg)
 
         if (currentInstruction.type == 0)
         {
+            op_count[8]++;
             register_values[currentInstruction.reg] = ROW_BUFFER[col_access_num];
             ins_register[currentInstruction.reg] = -1;
             row_buffer_updates += (type_ins > 0);
         }
         else
         {
+            op_count[9]++;
             ROW_BUFFER[col_access_num] = currentInstruction.value;
             row_buffer_updates += (type_ins > 0) + 1;
         }
@@ -437,6 +439,7 @@ void perform_row(string reg)
 
                     if (u.type == 0)
                     {
+                        op_count[8]++;
                         register_values[u.reg] = ROW_BUFFER[col_access_num];
                         ins_register[u.reg] = -1;
                         row_buffer_updates += (type_ins > 0);
@@ -444,6 +447,7 @@ void perform_row(string reg)
                     }
                     else
                     {
+                        op_count[9]++;
                         ROW_BUFFER[col_access_num] = u.value;
                         row_buffer_updates += (type_ins > 0) + 1;
                         //now print/store output string
@@ -479,12 +483,14 @@ void complete_remaining()
     {
         if (currentInstruction.type == 0)
         {
+            op_count[8]++;
             register_values[currentInstruction.reg] = ROW_BUFFER[col_access_num];
             ins_register[currentInstruction.reg] = -1;
             row_buffer_updates += (type_ins > 0);
         }
         else
         {
+            op_count[9]++;
             ROW_BUFFER[col_access_num] = currentInstruction.value;
             row_buffer_updates += (type_ins > 0) + 1;
         }
@@ -511,6 +517,7 @@ void complete_remaining()
             col_access_num = u.memory_address % 1024;
             if (u.type == 0)
             {
+                op_count[8]++;
                 register_values[u.reg] = ROW_BUFFER[col_access_num];
                 ins_register[u.reg] = -1;
                 row_buffer_updates += (type_ins > 0);
@@ -518,6 +525,7 @@ void complete_remaining()
             }
             else
             {
+                op_count[9]++;
                 ROW_BUFFER[col_access_num] = u.value;
                 row_buffer_updates += (type_ins > 0) + 1;
                 //now print/store output string
@@ -559,6 +567,7 @@ void complete_remaining()
 
             if (u.type == 0)
             {
+                op_count[8]++;
                 register_values[u.reg] = ROW_BUFFER[col_access_num];
 
                 ins_register[u.reg] = -1;
@@ -567,6 +576,7 @@ void complete_remaining()
             }
             else
             {
+                op_count[9]++;
                 ROW_BUFFER[col_access_num] = u.value;
 
                 row_buffer_updates += (type_ins > 0) + 1;
@@ -690,6 +700,7 @@ void parallelAction(struct toPrint curr)
             if (currentInstruction.type == 0)
             {
                 //lw instruction, update the register from row buffer
+                op_count[8]++;
                 register_values[currentInstruction.reg] = ROW_BUFFER[col_access_num];
                 ins_register[currentInstruction.reg] = -1;
                 row_buffer_updates += (type_ins > 0);
@@ -699,6 +710,7 @@ void parallelAction(struct toPrint curr)
             }
             else
             {
+                op_count[9]++;
                 //update the row buffer with register value
                 curr.DRAMoperation = "Column access " + to_string(col_access_num);
                 curr.DRAMchanges = "memory address " + to_string(currentInstruction.memory_address) + "-" + to_string(currentInstruction.memory_address + 3) + "=" + to_string(currentInstruction.value);
@@ -1027,7 +1039,7 @@ void process()
         ins_count[PC]++;
         struct Instruction current = instructs[PC];
         int action = operation[current.name];
-        op_count[action]++;
+        if(action!=8 && action!=9)op_count[action]++;
         //all clock cycles are incremented inside the functions
         switch (action)
         {
