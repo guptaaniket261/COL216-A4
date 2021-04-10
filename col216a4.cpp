@@ -5,7 +5,6 @@
 #include <map>
 #include <deque>
 #include <iomanip>
-#include <bits/stdc++.h>
 #include "simulator.hpp"
 using namespace std;
 
@@ -1126,11 +1125,11 @@ void PrintData()
         cout << "\n";
     }
     cout << "\n";
-    cout << "The number of times each instruction was executed is given below : \n"
+    cout << "The number of times each instruction was read is given below : \n"
          << endl;
     for (int i = 0; i < instructs.size(); i++)
     {
-        cout << "Instruction no: " << std::dec << i + 1 << " was executed " << std::dec << ins_count[i] << " times." << endl;
+        cout << "Instruction no: " << std::dec << i + 1 << " was read " << std::dec << ins_count[i] << " times." << endl;
     }
 
     cout << "\nThe number of times each type of instruction was executed is given below : \n"

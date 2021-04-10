@@ -1,10 +1,1 @@
-main:
-	add $s0, $s0, 1020
-	add $t0, $t0, 50
-	sw $t0, 0($s0)
-	lw $t1, 0($s0)
-	add $t0, $t0, 99
-	add $t1, $t1, 99 
-	j exit
-	add $t3, $t3, 10 
-exit:
+//enter input here
