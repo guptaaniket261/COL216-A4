@@ -1,18 +1,10 @@
 main:
-	addi $s0, $s0, 200
-	addi $t2,$t2, 40
-	sub $t5, $t5, -50
-	sw $t2, 400($zero)
-	sw $t3, 1000($t2)
-	bne $t3, $t2, next
-	lw $t1, 1000($zero)
-
-	next:
-		sw $t2, 500($zero)
-		lw $t7, 1000($t2)
-		addi $t6, $t6, 100
-		sw $t6, 300($zero)
-		lw $t2, 1020($zero)
-		
-
+	add $s0, $s0, 1020
+	add $t0, $t0, 50
+	sw $t0, 0($s0)
+	lw $t1, 0($s0)
+	add $t0, $t0, 99
+	add $t1, $t1, 99 
+	j exit
+	add $t3, $t3, 10 
 exit:
